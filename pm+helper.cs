@@ -1333,13 +1333,13 @@ namespace MssqlPatientHelper
 
             _btnCheckUpdate = new Button
             {
-                Text = "?봽 ?낅뜲?댄듃 ?뺤씤",
+                Text = "\uC5C5\uB370\uC774\uD2B8 \uD655\uC778",
                 Location = new Point(0, 0),
                 Size = new Size(125, 26),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(79, 70, 229), // Indigo 600
                 ForeColor = Color.White,
-                Font = new Font("留묒? 怨좊뵓", 8.5F, FontStyle.Bold)
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 8.5F, FontStyle.Bold)
             };
             _btnCheckUpdate.FlatAppearance.BorderSize = 0;
             _btnCheckUpdate.Click += (s, e) => UpdateManager.CheckForUpdatesAsync(this, null, silent: false);
@@ -1347,13 +1347,13 @@ namespace MssqlPatientHelper
 
             _lblUpdateBadge = new Label
             {
-                Text = "狩???踰꾩쟾 媛??",
+                Text = "\u2B50 \uC0C8 \uBC84\uC804 \uAC00\uB2A5!",
                 Location = new Point(0, 0),
                 Size = new Size(115, 26),
                 TextAlign = ContentAlignment.MiddleCenter,
                 BackColor = Color.FromArgb(220, 38, 38), // Red 600
                 ForeColor = Color.White,
-                Font = new Font("留묒? 怨좊뵓", 8.5F, FontStyle.Bold),
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 8.5F, FontStyle.Bold),
                 Visible = false,
                 Cursor = Cursors.Hand
             };
