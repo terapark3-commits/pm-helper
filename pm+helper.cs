@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
@@ -444,6 +444,7 @@ namespace MssqlPatientHelper
         private Panel _pnlCredentials;
         private Label _lblStatusBadge;
         private Button _btnMyBox;
+        private Label _lblVersionBadge;
         private Button _btnCheckUpdate;
         private Label _lblUpdateBadge;
         private ToolTip _toolTip;
@@ -759,7 +760,7 @@ namespace MssqlPatientHelper
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.MinimumSize = new Size(1120, 720);
             this.Font = FontBase;
-            this.Text = "pm+helper - 환자 차트/DB 유지보수 도우미";
+            this.Text = "pm+helper v" + UpdateManager.CurrentVersion + " - 환자 차트/DB 유지보수 도우미";
 
             _toolTip = new ToolTip
             {
@@ -1223,15 +1224,12 @@ namespace MssqlPatientHelper
         private void InitializeComponent()
         {
             // Main Form Settings
-            this.Text = "pm+helper - 환자 차트번호 조회 및 검증 시스템 (Portable C# Edition) | 만든이: 한솔인텍";
+            this.Text = "pm+helper v" + UpdateManager.CurrentVersion + " - 환자 차트/DB 유지보수 도우미";
             this.Size = new Size(1280, 768);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.BackColor = ColorBgMain;
             this.ForeColor = ColorTextMain;
             this.Font = new Font("맑은 고딕", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
-
-            // Title with version
-            this.Text = string.Format("pm+helper v{0} - ?섏옄 李⑦듃踰덊샇 議고쉶 諛?寃利??쒖뒪??| 留뚮뱺?? ?쒖넄?명뀓", UpdateManager.CurrentVersion);
 
             // Toast Timer Setup
             _toastTimer = new Timer();
@@ -1330,6 +1328,18 @@ namespace MssqlPatientHelper
             _btnMyBox.FlatAppearance.BorderSize = 0;
             _btnMyBox.Click += BtnMyBox_Click;
             pnlSettings.Controls.Add(_btnMyBox);
+
+            _lblVersionBadge = new Label
+            {
+                Text = "v" + UpdateManager.CurrentVersion,
+                Location = new Point(0, 0),
+                Size = new Size(72, 24),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.FromArgb(30, 41, 59), // Slate 800
+                ForeColor = Color.FromArgb(147, 197, 253), // Blue 300
+                Font = new Font("留묒? 怨좊뵓", 9.0F, FontStyle.Bold)
+            };
+            pnlSettings.Controls.Add(_lblVersionBadge);
 
             _btnCheckUpdate = new Button
             {
@@ -2099,9 +2109,25 @@ namespace MssqlPatientHelper
                 _btnMyBox.BringToFront();
             }
 
+            if (_lblVersionBadge != null)
+            {
+                _lblVersionBadge.Location = new Point(lblMaker.Right + 8, 10);
+                _lblVersionBadge.Size = new Size(68, 24);
+                _lblVersionBadge.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                _lblVersionBadge.BringToFront();
+            }
+
+            if (_btnMyBox != null)
+            {
+                _btnMyBox.Location = new Point(_lblVersionBadge != null ? _lblVersionBadge.Right + 8 : lblMaker.Right + 8, 9);
+                _btnMyBox.Size = new Size(76, 26);
+                _btnMyBox.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                _btnMyBox.BringToFront();
+            }
+
             if (_btnCheckUpdate != null)
             {
-                _btnCheckUpdate.Location = new Point(_btnMyBox != null ? _btnMyBox.Right + 8 : lblMaker.Right + 8, 9);
+                _btnCheckUpdate.Location = new Point(_btnMyBox != null ? _btnMyBox.Right + 8 : lblMaker.Right + 80, 9);
                 _btnCheckUpdate.Size = new Size(GetButtonContentWidth(_btnCheckUpdate), 26);
                 _btnCheckUpdate.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 _btnCheckUpdate.BringToFront();
