@@ -444,6 +444,8 @@ namespace MssqlPatientHelper
         private Panel _pnlCredentials;
         private Label _lblStatusBadge;
         private Button _btnMyBox;
+        private Button _btnCheckUpdate;
+        private Label _lblUpdateBadge;
         private ToolTip _toolTip;
         private MenuStrip _menuStrip;
         private StatusStrip _statusStrip;
@@ -1228,12 +1230,32 @@ namespace MssqlPatientHelper
             this.ForeColor = ColorTextMain;
             this.Font = new Font("맑은 고딕", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
 
+            // Title with version
+            this.Text = string.Format("pm+helper v{0} - ?섏옄 李⑦듃踰덊샇 議고쉶 諛?寃利??쒖뒪??| 留뚮뱺?? ?쒖넄?명뀓", UpdateManager.CurrentVersion);
+
             // Toast Timer Setup
             _toastTimer = new Timer();
             _toastTimer.Interval = 3000;
             _toastTimer.Tick += (s, e) => {
                 _lblToast.Visible = false;
                 _toastTimer.Stop();
+            };
+
+            // Background update check on startup
+            this.Shown += (s, e) =>
+            {
+                UpdateManager.CheckForUpdatesAsync(this, info =>
+                {
+                    if (info != null && info.HasUpdate)
+                    {
+                        if (_lblUpdateBadge != null)
+                        {
+                            _lblUpdateBadge.Text = "狩?v" + info.Version + " 媛??";
+                            _lblUpdateBadge.Visible = true;
+                        }
+                        ShowToast("??踰꾩쟾 v" + info.Version + " ?낅뜲?댄듃媛 異쒖떆?섏뿀?듬땲??", ColorEmerald);
+                    }
+                }, silent: true);
             };
 
             // 1. Top Panel (Settings)
@@ -1308,6 +1330,35 @@ namespace MssqlPatientHelper
             _btnMyBox.FlatAppearance.BorderSize = 0;
             _btnMyBox.Click += BtnMyBox_Click;
             pnlSettings.Controls.Add(_btnMyBox);
+
+            _btnCheckUpdate = new Button
+            {
+                Text = "?봽 ?낅뜲?댄듃 ?뺤씤",
+                Location = new Point(0, 0),
+                Size = new Size(125, 26),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(79, 70, 229), // Indigo 600
+                ForeColor = Color.White,
+                Font = new Font("留묒? 怨좊뵓", 8.5F, FontStyle.Bold)
+            };
+            _btnCheckUpdate.FlatAppearance.BorderSize = 0;
+            _btnCheckUpdate.Click += (s, e) => UpdateManager.CheckForUpdatesAsync(this, null, silent: false);
+            pnlSettings.Controls.Add(_btnCheckUpdate);
+
+            _lblUpdateBadge = new Label
+            {
+                Text = "狩???踰꾩쟾 媛??",
+                Location = new Point(0, 0),
+                Size = new Size(115, 26),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.FromArgb(220, 38, 38), // Red 600
+                ForeColor = Color.White,
+                Font = new Font("留묒? 怨좊뵓", 8.5F, FontStyle.Bold),
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+            _lblUpdateBadge.Click += (s, e) => UpdateManager.CheckForUpdatesAsync(this, null, silent: false);
+            pnlSettings.Controls.Add(_lblUpdateBadge);
 
             // SQL Service Control
             _lblSqlServiceStatus = new Label
@@ -2046,6 +2097,22 @@ namespace MssqlPatientHelper
                 _btnMyBox.Size = new Size(76, 26);
                 _btnMyBox.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 _btnMyBox.BringToFront();
+            }
+
+            if (_btnCheckUpdate != null)
+            {
+                _btnCheckUpdate.Location = new Point(_btnMyBox != null ? _btnMyBox.Right + 8 : lblMaker.Right + 8, 9);
+                _btnCheckUpdate.Size = new Size(GetButtonContentWidth(_btnCheckUpdate), 26);
+                _btnCheckUpdate.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                _btnCheckUpdate.BringToFront();
+            }
+
+            if (_lblUpdateBadge != null)
+            {
+                _lblUpdateBadge.Location = new Point(_btnCheckUpdate != null ? _btnCheckUpdate.Right + 8 : lblMaker.Right + 120, 9);
+                _lblUpdateBadge.Size = new Size(115, 26);
+                _lblUpdateBadge.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                _lblUpdateBadge.BringToFront();
             }
 
             pnlSettingsFields.Location = new Point(16, 48);

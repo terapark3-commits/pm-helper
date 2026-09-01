@@ -28,7 +28,7 @@ echo.
   /codepage:65001 ^
   /win32icon:PatientHelper.ico ^
   /reference:System.dll,System.Data.dll,System.Drawing.dll,System.Windows.Forms.dll,System.Xml.dll ^
-  pm+helper.cs
+  pm+helper.cs UpdateManager.cs
 
 if errorlevel 1 (
     echo.
