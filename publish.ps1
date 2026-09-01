@@ -32,7 +32,7 @@ if ($ReleaseNotes -ne "") {
 $vObj.releaseDate = (Get-Date -Format "yyyy-MM-dd")
 
 $updatedJson = ConvertTo-Json $vObj -Depth 5
-[System.IO.File]::WriteAllText($versionJsonPath, $updatedJson, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllText($versionJsonPath, $updatedJson, (New-Object System.Text.UTF8Encoding($false)))
 
 $ver = $vObj.version
 $date = $vObj.releaseDate
@@ -42,19 +42,29 @@ Write-Host "`n[1/5] Active Version: v$ver (Release Date: $date)" -ForegroundColo
 # 2. Sync UpdateManager.cs
 $updateManagerPath = "$ScriptDir\UpdateManager.cs"
 if (Test-Path $updateManagerPath) {
-    $umContent = [System.IO.File]::ReadAllText($updateManagerPath, [System.Text.Encoding]::UTF8)
-    $umContent = [System.Text.RegularExpressions.Regex]::Replace($umContent, 'public const string CurrentVersion = "[^"]+";', "public const string CurrentVersion = `"$ver`";")
-    [System.IO.File]::WriteAllText($updateManagerPath, $umContent, [System.Text.Encoding]::UTF8)
+    $umLines = [System.IO.File]::ReadAllLines($updateManagerPath, [System.Text.Encoding]::UTF8)
+    for ($i = 0; $i -lt $umLines.Length; $i++) {
+        if ($umLines[$i].Contains("public const string CurrentVersion =")) {
+            $umLines[$i] = "        public const string CurrentVersion = `"$ver`";"
+        }
+    }
+    [System.IO.File]::WriteAllLines($updateManagerPath, $umLines, (New-Object System.Text.UTF8Encoding($true)))
     Write-Host "[2/5] Synced UpdateManager.cs -> CurrentVersion = `"$ver`"" -ForegroundColor Green
 }
 
 # 3. Sync user_manual.md
 $manualPath = "$ScriptDir\user_manual.md"
 if (Test-Path $manualPath) {
-    $manContent = [System.IO.File]::ReadAllText($manualPath, [System.Text.Encoding]::UTF8)
-    $manContent = [System.Text.RegularExpressions.Regex]::Replace($manContent, '- 적용 버전: [^\r\n]+', "- 적용 버전: V$ver")
-    $manContent = [System.Text.RegularExpressions.Regex]::Replace($manContent, '- 최종 업데이트: [^\r\n]+', "- 최종 업데이트: $date")
-    [System.IO.File]::WriteAllText($manualPath, $manContent, [System.Text.Encoding]::UTF8)
+    $manLines = [System.IO.File]::ReadAllLines($manualPath, [System.Text.Encoding]::UTF8)
+    for ($i = 0; $i -lt [Math]::Min(15, $manLines.Length); $i++) {
+        if ($manLines[$i].StartsWith("- 적용 버전:")) {
+            $manLines[$i] = "- 적용 버전: V$ver"
+        }
+        if ($manLines[$i].StartsWith("- 최종 업데이트:")) {
+            $manLines[$i] = "- 최종 업데이트: $date"
+        }
+    }
+    [System.IO.File]::WriteAllLines($manualPath, $manLines, (New-Object System.Text.UTF8Encoding($false)))
     Write-Host "[3/5] Synced user_manual.md -> 적용 버전: V$ver | 최종 업데이트: $date" -ForegroundColor Green
 }
 
