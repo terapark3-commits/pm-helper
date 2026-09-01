@@ -1,0 +1,19 @@
+﻿# Binaries and temp
+*.obj
+*.pdb
+*.tmp
+
+# Configuration & Sensitive Data
+*.cfg
+*.log
+*.bak
+reports/
+
+# IDE & Editor files
+.vs/
+.vscode/
+*.suo
+*.user
+
+# Temporary scripts
+scratch/
