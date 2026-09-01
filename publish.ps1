@@ -114,6 +114,6 @@ if (Test-Path "$ScriptDir\.git") {
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host "  All Build, Sync, and Tagging Tasks Completed!" -ForegroundColor Cyan
 Write-Host "  To push to GitHub, run:" -ForegroundColor White
-Write-Host "    git remote add origin https://github.com/terapark3/pm-helper.git" -ForegroundColor Gray
+Write-Host "    git remote add origin https://github.com/terapark3-commits/pm-helper.git" -ForegroundColor Gray
 Write-Host "    git push -u origin main --tags" -ForegroundColor Gray
 Write-Host "========================================================" -ForegroundColor Cyan
