@@ -24,7 +24,7 @@ namespace MssqlPatientHelper
 
     public static class UpdateManager
     {
-        public const string CurrentVersion = "5.19.0";
+        public const string CurrentVersion = "5.20.0";
         public const string RepoOwner = "terapark3-commits";
         public const string RepoName = "pm-helper";
 

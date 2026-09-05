@@ -516,17 +516,7 @@ namespace MssqlPatientHelper
         private DataGridView _dgvCanceledPrescs;
         private TextBox _txtUsageQuantityLog;
 
-        // UI Controls - DB Map & SQL Query Runner
-        private TabPage _tabDbMap;
-        private TabControl _subTabDbMap;
-        // SubTab 1: Schema Explorer
-        private TabPage _tabSchemaExplorer;
-        private ComboBox _cmbDbMapSelector;
-        private TextBox _txtDbMapSearch;
-        private DataGridView _dgvDbMapTables;
-        private DataGridView _dgvDbMapColumns;
-        private TextBox _txtDbMapJoinGuide;
-        // SubTab 2: Query Runner
+        // UI Controls - SQL Query Runner (Top-level Tab)
         private TabPage _tabQueryRunner;
         private ComboBox _cmbQueryDbSelector;
         private TextBox _txtQueryInput;
@@ -2070,8 +2060,8 @@ namespace MssqlPatientHelper
             // Initialize Narcotics Management Tab
             InitializeNarcoticsManagementTab();
 
-            // Initialize DB Map Tab
-            InitializeDbMapTab();
+            // Initialize Query Runner Tab
+            InitializeQueryRunnerTab();
 
             StripParenthesizedTabNames(_subTabDataManagement);
             InstallVisibleTabNavigation(mainTabHost, _tabControl);
@@ -2471,56 +2461,6 @@ namespace MssqlPatientHelper
             }
         }
 
-        private void AdjustDbMapExplorerLayout()
-        {
-            if (_dgvDbMapTables != null && _dgvDbMapTables.Parent != null)
-            {
-                Control parent = _dgvDbMapTables.Parent;
-                int bottomMargin = 28;
-                int gridHeight = parent.ClientSize.Height - _dgvDbMapTables.Top - bottomMargin;
-                int gridWidth = parent.ClientSize.Width - _dgvDbMapTables.Left - 14;
-                if (gridHeight > 120) _dgvDbMapTables.Height = gridHeight;
-                if (gridWidth > 180) _dgvDbMapTables.Width = gridWidth;
-                _dgvDbMapTables.ScrollBars = ScrollBars.Both;
-            }
-
-            if (_dgvDbMapTables != null && _dgvDbMapTables.Columns.Count > 0)
-            {
-                ApplyContentSizedColumns(_dgvDbMapTables);
-            }
-
-            if (_dgvDbMapColumns != null && _dgvDbMapColumns.Columns.Count > 0)
-            {
-                ApplyContentSizedColumns(_dgvDbMapColumns);
-            }
-
-            if (_splitExplorerMain == null || _splitExplorerMain.ClientSize.Width <= 0 || _dgvDbMapTables == null)
-            {
-                return;
-            }
-
-            int tableGridWidth = 0;
-            foreach (DataGridViewColumn col in _dgvDbMapTables.Columns)
-            {
-                if (col.Visible) tableGridWidth += col.Width;
-            }
-
-            int totalWidth = _splitExplorerMain.ClientSize.Width;
-            int rightMin = Math.Min(520, Math.Max(260, totalWidth / 2));
-            int desiredLeft = Math.Max(360, tableGridWidth + 36);
-            int maxLeft = Math.Max(360, totalWidth - rightMin);
-            int newDistance = Math.Min(desiredLeft, maxLeft);
-
-            try
-            {
-                _splitExplorerMain.Panel1MinSize = Math.Min(360, Math.Max(120, totalWidth - rightMin));
-                _splitExplorerMain.Panel2MinSize = Math.Min(rightMin, Math.Max(120, totalWidth - _splitExplorerMain.Panel1MinSize));
-                _splitExplorerMain.SplitterDistance = newDistance;
-                _distExplorerMain = newDistance;
-            }
-            catch { }
-        }
-
         private void StripParenthesizedTabNames(TabControl tabControl)
         {
             if (tabControl == null) return;
@@ -2582,9 +2522,9 @@ namespace MssqlPatientHelper
                 _troubleshooter.ToggleDemoMode(isDemo);
             }
 
-            if (_cmbDbMapSelector != null && _cmbDbMapSelector.Items.Count > 0)
+            if (_cmbQueryDbSelector != null && _cmbQueryDbSelector.Items.Count > 0)
             {
-                LoadDbMapDatabases();
+                LoadQueryRunnerDatabases();
             }
 
             RefreshAttachedBackupStatus();
@@ -2760,8 +2700,6 @@ namespace MssqlPatientHelper
         private void BtnSaveConfig_Click(object sender, EventArgs e)
         {
             // Read current SplitterDistance from every visible SplitContainer
-            if (_splitExplorerMain  != null && _splitExplorerMain.Visible)  _distExplorerMain  = _splitExplorerMain.SplitterDistance;
-            if (_splitRightExplorer != null && _splitRightExplorer.Visible) _distRightExplorer = _splitRightExplorer.SplitterDistance;
             if (_splitChartResolver != null && _splitChartResolver.Visible) _distChartResolver = _splitChartResolver.SplitterDistance;
             if (_splitUser          != null && _splitUser.Visible)          _distUser          = _splitUser.SplitterDistance;
             if (_splitCard          != null && _splitCard.Visible)          _distCard          = _splitCard.SplitterDistance;
@@ -2781,10 +2719,6 @@ namespace MssqlPatientHelper
         // Form Closing - only save col widths (splitter positions saved by 위치저장 button)
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Grid column widths (safe to read anytime)
-            if (_dgvDbMapTables != null && _dgvDbMapTables.IsHandleCreated && _dgvDbMapTables.Columns.Count >= 3)
-            if (_dgvDbMapColumns != null && _dgvDbMapColumns.IsHandleCreated && _dgvDbMapColumns.Columns.Count >= 6)
-
             SaveConfig();
         }
 
@@ -14669,205 +14603,14 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
         // UI Layout & Logic - DB Map & SQL Query Runner
         // ====================================================
 
-        private void InitializeDbMapTab()
+        private void InitializeQueryRunnerTab()
         {
-            _tabDbMap = new TabPage
-            {
-                Text = "🗺️ DB 상세 지도",
-                BackColor = ColorBgMain
-            };
-            _tabControl.TabPages.Add(_tabDbMap);
-
-            _subTabDbMap = new TabControl
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColorBgMain,
-                ForeColor = ColorTextMain,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Regular)
-            };
-            _tabDbMap.Controls.Add(_subTabDbMap);
-
-            // SubTab 1: 스키마 탐색기
-            _tabSchemaExplorer = new TabPage
-            {
-                Text = "📋 스키마 탐색기",
-                BackColor = ColorBgMain
-            };
-            _subTabDbMap.TabPages.Add(_tabSchemaExplorer);
-            
-            _splitExplorerMain = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Vertical,
-                Panel1MinSize = 120,
-                Panel2MinSize = 120,
-                SplitterDistance = _distExplorerMain,
-                BackColor = ColorBorder
-            };
-            _tabSchemaExplorer.Controls.Add(_splitExplorerMain);
-            _splitExplorerMain.SplitterMoved += (s, e) => { _distExplorerMain = _splitExplorerMain.SplitterDistance; SaveConfig(); };
-            _splitExplorerMain.Resize += (s, e) => AdjustDbMapExplorerLayout();
-            AdjustDbMapExplorerLayout();
-
-            // Left panel: Table List
-            Panel pnlLeftTable = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColorBgCard,
-                Padding = new Padding(10)
-            };
-            _splitExplorerMain.Panel1.Controls.Add(pnlLeftTable);
-            pnlLeftTable.Resize += (s, e) => AdjustDbMapExplorerLayout();
-
-            Label lblDbSelect = new Label { Text = "데이터베이스 선택", Location = new Point(10, 10), Size = new Size(120, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _cmbDbMapSelector = new ComboBox
-            {
-                Location = new Point(10, 32),
-                Size = new Size(310, 25),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                BackColor = ColorBgMain,
-                ForeColor = ColorTextMain
-            };
-            _cmbDbMapSelector.SelectedIndexChanged += CmbDbMapSelector_SelectedIndexChanged;
-            pnlLeftTable.Controls.Add(lblDbSelect);
-            pnlLeftTable.Controls.Add(_cmbDbMapSelector);
-
-            Label lblSearch = new Label { Text = "테이블 검색 (이름 필터)", Location = new Point(10, 68), Size = new Size(150, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _txtDbMapSearch = new TextBox
-            {
-                Location = new Point(10, 90),
-                Size = new Size(310, 25),
-                BackColor = ColorBgMain,
-                ForeColor = ColorTextMain,
-                BorderStyle = BorderStyle.FixedSingle
-            };
-            _txtDbMapSearch.TextChanged += TxtDbMapSearch_TextChanged;
-            pnlLeftTable.Controls.Add(lblSearch);
-            pnlLeftTable.Controls.Add(_txtDbMapSearch);
-
-            _dgvDbMapTables = new DataGridView
-            {
-                Location = new Point(10, 125),
-                Size = new Size(310, 480),
-                BackgroundColor = ColorBgMain,
-                ForeColor = ColorTextMain,
-                GridColor = ColorBorder,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = false,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                ReadOnly = true,
-                BorderStyle = BorderStyle.FixedSingle,
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 28,
-                ScrollBars = ScrollBars.Both,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
-            };
-            _dgvDbMapTables.ColumnWidthChanged += (s, e) => {
-                if (_dgvDbMapTables.Columns.Count >= 3)
-                {
-                }
-            };
-            _dgvDbMapTables.ColumnHeadersDefaultCellStyle.BackColor = ColorBgCard;
-            _dgvDbMapTables.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            _dgvDbMapTables.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 9F, FontStyle.Bold);
-            _dgvDbMapTables.DefaultCellStyle.BackColor = ColorBgMain;
-            _dgvDbMapTables.DefaultCellStyle.ForeColor = ColorTextMain;
-            _dgvDbMapTables.DefaultCellStyle.SelectionBackColor = ColorIndigo;
-            _dgvDbMapTables.DefaultCellStyle.SelectionForeColor = Color.White;
-            _dgvDbMapTables.SelectionChanged += DgvDbMapTables_SelectionChanged;
-            pnlLeftTable.Controls.Add(_dgvDbMapTables);
-
-            // Right panel: Columns & Relation Guide
-            _splitRightExplorer = new SplitContainer
-            {
-                Dock = DockStyle.Fill,
-                Orientation = Orientation.Horizontal,
-                SplitterDistance = _distRightExplorer,
-                BackColor = ColorBorder
-            };
-            _splitExplorerMain.Panel2.Controls.Add(_splitRightExplorer);
-            _splitRightExplorer.SplitterMoved += (s, e) => { _distRightExplorer = _splitRightExplorer.SplitterDistance; SaveConfig(); };
-
-            Panel pnlRightColumns = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColorBgCard,
-                Padding = new Padding(10)
-            };
-            _splitRightExplorer.Panel1.Controls.Add(pnlRightColumns);
-
-            Label lblColumnsTitle = new Label { Text = "📋 선택한 테이블 컬럼 상세 명세", Location = new Point(10, 10), Size = new Size(250, 20), ForeColor = ColorIndigo, Font = new Font("맑은 고딕", 10F, FontStyle.Bold) };
-            pnlRightColumns.Controls.Add(lblColumnsTitle);
-
-            _dgvDbMapColumns = new DataGridView
-            {
-                Location = new Point(10, 35),
-                Size = new Size(710, 410),
-                BackgroundColor = ColorBgMain,
-                ForeColor = ColorTextMain,
-                GridColor = ColorBorder,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = false,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                ReadOnly = true,
-                BorderStyle = BorderStyle.FixedSingle,
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeight = 28,
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
-            };
-            _dgvDbMapColumns.ColumnWidthChanged += (s, e) => {
-                if (_dgvDbMapColumns.Columns.Count >= 6)
-                {
-                }
-            };
-            _dgvDbMapColumns.ColumnHeadersDefaultCellStyle.BackColor = ColorBgCard;
-            _dgvDbMapColumns.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            _dgvDbMapColumns.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 9F, FontStyle.Bold);
-            _dgvDbMapColumns.DefaultCellStyle.BackColor = ColorBgMain;
-            _dgvDbMapColumns.DefaultCellStyle.ForeColor = ColorTextMain;
-            _dgvDbMapColumns.DefaultCellStyle.SelectionBackColor = ColorIndigo;
-            _dgvDbMapColumns.DefaultCellStyle.SelectionForeColor = Color.White;
-            pnlRightColumns.Controls.Add(_dgvDbMapColumns);
-
-            // Bottom Right Panel: Relation Guide
-            Panel pnlRightGuide = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColorBgCard,
-                Padding = new Padding(10)
-            };
-            _splitRightExplorer.Panel2.Controls.Add(pnlRightGuide);
-
-            Label lblGuideTitle = new Label { Text = "🔗 데이터 연계 및 조인(Join) 분석 가이드", Location = new Point(10, 10), Size = new Size(300, 20), ForeColor = ColorEmerald, Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold) };
-            pnlRightGuide.Controls.Add(lblGuideTitle);
-
-            _txtDbMapJoinGuide = new TextBox
-            {
-                Location = new Point(10, 32),
-                Size = new Size(850, 120),
-                Multiline = true,
-                WordWrap = true,
-                ScrollBars = ScrollBars.Vertical,
-                ReadOnly = true,
-                BackColor = ColorBgMain,
-                ForeColor = ColorTextMain,
-                BorderStyle = BorderStyle.FixedSingle,
-                Font = new Font("맑은 고딕", 9F),
-                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
-            };
-            pnlRightGuide.Controls.Add(_txtDbMapJoinGuide);
-
-            // SubTab 2: 쿼리 실행기
             _tabQueryRunner = new TabPage
             {
-                Text = "💻 쿼리 실행기",
+                Text = "\u26A1 \uCFFC\uB9AC \uC2E4\uD589\uAE30",
                 BackColor = ColorBgMain
             };
-            _subTabDbMap.TabPages.Add(_tabQueryRunner);
+            _tabControl.TabPages.Add(_tabQueryRunner);
 
             SplitContainer splitQueryMain = new SplitContainer
             {
@@ -14886,7 +14629,14 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             };
             splitQueryMain.Panel1.Controls.Add(pnlQueryTop);
 
-            Label lblQueryDb = new Label { Text = "대상 데이터베이스", Location = new Point(12, 12), Size = new Size(110, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
+            Label lblQueryDb = new Label
+            {
+                Text = "\uB300\uC0C1 \uB370\uC774\uD130\uBCA0\uC774\uC2A4",
+                Location = new Point(12, 12),
+                Size = new Size(110, 20),
+                ForeColor = ColorTextSec,
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 9F, FontStyle.Bold)
+            };
             _cmbQueryDbSelector = new ComboBox
             {
                 Location = new Point(130, 10),
@@ -14900,15 +14650,14 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
 
             Label lblQueryInfo = new Label
             {
-                Text = "※ 주의: SELECT 이외의 변경 쿼리 실행 시 강력한 안전경고 경고창이 작동합니다. 종료 시 세미콜론(;)을 붙여주세요.",
+                Text = "\u203B \uC8FC\uC758: SELECT \uC774\uC678\uC758 \uBCC0\uACBD \uCF7C\uB9AC \uC2E4\uD589 \uC2DC \uC548\uC804 \uC7AC\uD655\uC778 \uACBD\uACE0\uCC3D\uC774 \uC791\uB3D9\uD569\uB2C8\uB2E4. \uC885\uB8CC \uC2DC \uC138\uBBF8\uCF5C\uB860(;) \uD544\uC218.",
                 Location = new Point(330, 13),
                 Size = new Size(600, 20),
                 ForeColor = ColorAlarm,
-                Font = new Font("맑은 고딕", 8.5F, FontStyle.Italic)
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 8.5F, FontStyle.Italic)
             };
             pnlQueryTop.Controls.Add(lblQueryInfo);
 
-            // Right panel holds the execute button (always visible, fixed width)
             Panel pnlQueryRight = new Panel
             {
                 Dock = DockStyle.Right,
@@ -14925,13 +14674,12 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
                 FlatStyle = FlatStyle.Flat,
                 BackColor = ColorEmerald,
                 ForeColor = Color.White,
-                Font = new Font("\ub9d1\uc740 \uace0\ub515", 11F, FontStyle.Bold)
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 11F, FontStyle.Bold)
             };
             _btnExecuteQuery.FlatAppearance.BorderSize = 0;
             _btnExecuteQuery.Click += BtnExecuteQuery_Click;
             pnlQueryRight.Controls.Add(_btnExecuteQuery);
 
-            // TextBox fills remaining space (left of button panel)
             _txtQueryInput = new TextBox
             {
                 Location = new Point(12, 45),
@@ -14955,16 +14703,23 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             };
             splitQueryMain.Panel2.Controls.Add(pnlQueryBottom);
 
-            Label lblQueryResultTitle = new Label { Text = "📊 실행 결과", Location = new Point(12, 5), Size = new Size(100, 20), ForeColor = ColorIndigo, Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold) };
+            Label lblQueryResultTitle = new Label
+            {
+                Text = "\uD83D\uDCCA \uC2E4\uD589 \uACB0\uACFC",
+                Location = new Point(12, 5),
+                Size = new Size(100, 20),
+                ForeColor = ColorIndigo,
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 9.5F, FontStyle.Bold)
+            };
             pnlQueryBottom.Controls.Add(lblQueryResultTitle);
 
             _lblQueryStatus = new Label
             {
-                Text = "준비 완료 (SQL을 입력하고 실행 버튼을 누르세요.)",
+                Text = "\uC900\uBE44 \uC644\uB8CC (SQL\uC744 \uC785\uB825\uD558\uACE0 \uC2E4\uD589 \uBC84\uD2BC\uC744 \uB204\uB974\uC138\uC694.)",
                 Location = new Point(130, 5),
                 Size = new Size(800, 20),
                 ForeColor = ColorTextSec,
-                Font = new Font("맑은 고딕", 9F)
+                Font = new Font("\uB9D1\uC740 \uACE0\uB515", 9F)
             };
             pnlQueryBottom.Controls.Add(_lblQueryStatus);
 
@@ -14985,30 +14740,75 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             };
             _dgvQueryResult.ColumnHeadersDefaultCellStyle.BackColor = ColorBgCard;
             _dgvQueryResult.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            _dgvQueryResult.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 9F, FontStyle.Bold);
+            _dgvQueryResult.ColumnHeadersDefaultCellStyle.Font = new Font("\uB9D1\uC740 \uACE0\uB515", 9F, FontStyle.Bold);
             _dgvQueryResult.DefaultCellStyle.BackColor = ColorBgMain;
             _dgvQueryResult.DefaultCellStyle.ForeColor = ColorTextMain;
             _dgvQueryResult.DefaultCellStyle.SelectionBackColor = ColorIndigo;
             _dgvQueryResult.DefaultCellStyle.SelectionForeColor = Color.White;
             pnlQueryBottom.Controls.Add(_dgvQueryResult);
+        }
+        private void LoadQueryRunnerDatabases()
+        {
+            if (_cmbQueryDbSelector == null) return;
 
-            // Populate selector lists (lazy-loaded on tab click now)
+            _cmbQueryDbSelector.Items.Clear();
+
+            if (_isDemo)
+            {
+                string[] dbs = { "PM_MAIN", "PMPLUS_DUMS", "PMPLUS_IMAGE", "PMPLUS_JOBLOG" };
+                foreach (var db in dbs)
+                {
+                    _cmbQueryDbSelector.Items.Add(db);
+                }
+                _cmbQueryDbSelector.SelectedIndex = 0;
+            }
+            else
+            {
+                try
+                {
+                    string connStr = BuildConnectionString(false);
+                    using (SqlConnection conn = new SqlConnection(connStr))
+                    {
+                        conn.Open();
+                        using (SqlCommand cmd = new SqlCommand("SELECT name FROM sys.databases WHERE database_id > 4 ORDER BY name", conn))
+                        {
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    string dbName = reader.GetString(0);
+                                    _cmbQueryDbSelector.Items.Add(dbName);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    string[] dbs = { "PM_MAIN", "PMPLUS_DUMS", "PMPLUS_IMAGE", "PMPLUS_JOBLOG" };
+                    foreach (var db in dbs)
+                    {
+                        _cmbQueryDbSelector.Items.Add(db);
+                    }
+                }
+
+                if (_cmbQueryDbSelector.Items.Count > 0)
+                {
+                    string currentDb = _cmbDatabases != null && _cmbDatabases.SelectedItem != null ? _cmbDatabases.SelectedItem.ToString() : "PM_MAIN";
+                    int idx = _cmbQueryDbSelector.FindStringExact(currentDb);
+                    _cmbQueryDbSelector.SelectedIndex = idx >= 0 ? idx : 0;
+                }
+            }
         }
 
         private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (_tabControl.SelectedTab == _tabDbMap)
+            if (_tabControl.SelectedTab == _tabQueryRunner)
             {
-                if (_cmbDbMapSelector != null && _cmbDbMapSelector.Items.Count == 0)
+                if (_cmbQueryDbSelector != null && _cmbQueryDbSelector.Items.Count == 0)
                 {
-                    LoadDbMapDatabases();
+                    LoadQueryRunnerDatabases();
                 }
-                // Restore schema explorer splitter distances after layout
-                BeginInvoke((Action)(() =>
-                {
-                    if (_splitExplorerMain  != null) AdjustDbMapExplorerLayout();
-                    if (_splitRightExplorer != null) try { _splitRightExplorer.SplitterDistance = _distRightExplorer; } catch {}
-                }));
             }
             if (_tabControl.SelectedTab == _tabDataManagement)
             {
@@ -15019,523 +14819,6 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
                     if (_splitLabel != null && _splitLabel.Visible) try { _splitLabel.SplitterDistance = _distLabel; } catch {}
                     if (_splitRx    != null && _splitRx.Visible)    NormalizeRightPanelSplit(_splitRx, ref _distRx, 340, 360);
                 }));
-            }
-            if (_tabControl.SelectedTab == _tabInventoryManagement)
-            {
-                BeginInvoke((Action)(() =>
-                {
-                    if (_splitInventory != null) NormalizeRightPanelSplit(_splitInventory, 320, 760);
-                }));
-            }
-        }
-
-        private void LoadDbMapDatabases()
-        {
-            if (_cmbDbMapSelector == null) return;
-
-            _cmbDbMapSelector.Items.Clear();
-            _cmbQueryDbSelector.Items.Clear();
-
-            if (_isDemo)
-            {
-                string[] dbs = { "PM_MAIN", "PMPLUS_DUMS", "PMPLUS_IMAGE", "PMPLUS_JOBLOG" };
-                foreach (var db in dbs)
-                {
-                    _cmbDbMapSelector.Items.Add(db);
-                    _cmbQueryDbSelector.Items.Add(db);
-                }
-                _cmbDbMapSelector.SelectedIndex = 0;
-                _cmbQueryDbSelector.SelectedIndex = 0;
-            }
-            else
-            {
-                // Try load from actual DB
-                try
-                {
-                    string connStr = BuildConnectionString(false);
-                    using (SqlConnection conn = new SqlConnection(connStr))
-                    {
-                        conn.Open();
-                        using (SqlCommand cmd = new SqlCommand("SELECT name FROM sys.databases WHERE database_id > 4", conn))
-                        {
-                            using (SqlDataReader reader = cmd.ExecuteReader())
-                            {
-                                while (reader.Read())
-                                {
-                                    string dbName = reader.GetString(0);
-                                    _cmbDbMapSelector.Items.Add(dbName);
-                                    _cmbQueryDbSelector.Items.Add(dbName);
-                                }
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Fallback to defaults
-                    string[] dbs = { "PM_MAIN", "PMPLUS_DUMS", "PMPLUS_IMAGE", "PMPLUS_JOBLOG" };
-                    foreach (var db in dbs)
-                    {
-                        _cmbDbMapSelector.Items.Add(db);
-                        _cmbQueryDbSelector.Items.Add(db);
-                    }
-                }
-
-                if (_cmbDbMapSelector.Items.Count > 0) _cmbDbMapSelector.SelectedIndex = 0;
-                if (_cmbQueryDbSelector.Items.Count > 0) _cmbQueryDbSelector.SelectedIndex = 0;
-            }
-        }
-
-        private string GetColumnDescription(string tableName, string columnName)
-        {
-            string colUpper = columnName.ToUpper();
-            string tblUpper = tableName.ToUpper();
-
-            // 공통 컬럼명 매핑 (우선순위 높음)
-            if (colUpper == "DRUG_SEQ") return "처방 일련번호 (처방전 식별 Key)";
-            if (colUpper == "DRUG_CODE") return "약품 코드 (약품 마스터 식별 Key)";
-            if (colUpper == "CHRTNO") return "환자 차트번호 (환자 식별 Key)";
-            if (colUpper == "PAT_NM" || colUpper == "PATNAME") return "환자 성명";
-            if (colUpper == "PAT_JUMIN_NO" || colUpper == "JUMIN" || colUpper == "JUMIN_NO") return "주민등록번호 (개인정보, 암호화 대상)";
-            if (colUpper == "INPUT_SEQ") return "입력 순번 (조제 일련번호 Key)";
-            if (colUpper == "IDX") return "정렬 인덱스 (순차 정렬용)";
-            if (colUpper == "REPORT_GUBUN") return "마약류 보고 구분 (1:일반처방, 2:일괄보고 등)";
-            if (colUpper == "SEND_GUBUN") return "전송 구분 (0:대기, 1:보고완료, 9:에러)";
-            if (colUpper == "PRES_DTIME") return "처방 발행 일시";
-            if (colUpper == "DRUG_QTY") return "약품 처방 수량";
-            if (colUpper == "DAN" || colUpper == "DRUG_UNIT") return "약품 단위 (정, 캡슐, 개 등)";
-            if (colUpper == "DRUG_NM" || colUpper == "DRUG_NAME") return "약품 한글명";
-            if (colUpper == "DRUG_SPEC") return "약품 규격 (예: 50mg, 10ml)";
-            if (colUpper == "MAKER_NM" || colUpper == "MAKER_NAME") return "제약회사 제조원";
-            if (colUpper == "TEL_NO") return "환자 전화번호";
-            if (colUpper == "HP_NO") return "환자 휴대전화번호";
-            if (colUpper == "ADDR" || colUpper == "ADDRESS") return "환자 주소";
-            if (colUpper == "LOG_DTIME") return "로그 발생 일시";
-            if (colUpper == "LOG_MSG" || colUpper == "LOG_MESSAGE") return "로그 상세 내용";
-            if (colUpper == "LOG_SEQ") return "로그 순번 (PK)";
-            if (colUpper == "PRES_PRGRS_STATE") return "처방 진행 상태 (0:대기, 1:조제중, 2:조제완료, 3:인도완료)";
-
-            // 테이블 특정 컬럼 설명
-            if (tblUpper == "DRUGIMG" || tblUpper.StartsWith("DRUGIMG_"))
-            {
-                if (colUpper == "DRUG_IMAGE" || colUpper == "IMG_DATA") return "약품 이미지 바이너리 데이터";
-                if (colUpper == "FILE_NAME") return "약품 이미지 파일명";
-                if (colUpper == "FILE_SIZE") return "약품 이미지 파일 크기(Bytes)";
-            }
-
-            return "";
-        }
-
-        private string GetTableDescription(string tableName)
-        {
-            string upperName = tableName.ToUpper();
-
-            if (upperName.StartsWith("PHMS_F010_")) return "청구자료 송신 기본/요약 데이터";
-            if (upperName.StartsWith("PHMS_F020_")) return "청구자료 송신 상세/전문 데이터";
-            if (upperName.StartsWith("PHMS_F040_")) return "청구자료 수신 결과/접수 통보 데이터";
-            if (upperName.StartsWith("PHMS_F050_")) return "청구자료 수신 오류/반송 통보 데이터";
-            if (upperName.StartsWith("PHMS_F060_")) return "청구자료 수신 심사/처리 결과 데이터";
-            if (upperName.StartsWith("PHMS_F")) return "청구자료 송수신 연계 데이터";
-            if (upperName.StartsWith("PHMS_R")) return "청구자료 수신/응답 연계 데이터";
-            if (upperName.StartsWith("PHMS_S")) return "청구자료 송신/전송 연계 데이터";
-            if (upperName.StartsWith("PHMS_")) return "약국 전산/청구 연계 시스템 데이터";
-            if (upperName.StartsWith("TBSIR")) return "보험 청구/심사/공단 연계 데이터";
-            if (upperName.StartsWith("TBSIB_H")) return "보험 청구/심사 관련 데이터 (용도는 개별 테이블 컬럼 확인 필요)";
-            if (upperName.StartsWith("TBSIB")) return "보험 기준/요양기관/청구 관련 데이터";
-            if (upperName.StartsWith("TBSWH")) return "약품 입출고/재고 수불 데이터";
-            if (upperName.StartsWith("KPDS_")) return "처방 교부/전자문서 연계 데이터";
-            if (upperName.StartsWith("JVM_")) return "JVM/ATC 자동 조제기 연동 데이터";
-            
-            // 핵심 개별 테이블 설명
-            if (upperName == "TBSID040_03") return "★ 처방전 마스터 (헤더 정보)";
-            if (upperName == "TBSID040_04") return "★ 처방전 상세 약품 내역";
-            if (upperName == "TBSID040_05") return "★ 처방전 조제 상세 (일련번호 대상)";
-            if (upperName == "TBSIT000_01") return "★ 환자 마스터 (기본 신상 정보)";
-            if (upperName == "TBSIM000_01") return "★ 약품 기초 마스터 (코드/규격)";
-            if (upperName == "TBSNM020_04") return "★ 마약류 처방 마스터 대기";
-            if (upperName == "TBSNM020_05") return "★ 마약류 처방 상세 대기";
-            if (upperName == "TBSNM020_06") return "★ 마약류 보고 로그 마스터";
-            if (upperName == "TBSNM020_07") return "★ 마약류 보고 로그 상세";
-            if (upperName.StartsWith("TBSNM010")) return "마약류 취급보고 기초/대상 정보";
-            if (upperName.StartsWith("TBSNM020")) return "마약류 처방·조제·보고 연계 데이터";
-            if (upperName == "PM_PRES_LOG") return "★ 처방 트랜잭션 로그";
-            if (upperName == "DRUGIMG") return "★ 약품 외형 이미지 정보";
-            if (upperName == "CUSTOMER_PRINT_LOG") return "고객 출력물 로그";
-            if (upperName == "BACORD_TOTAL_CHK") return "바코드 정합성 체크";
-            
-            if (upperName == "CD_LBCOUNT") return "★ 라벨/포장 장치 출력 카운트 설정";
-            if (upperName == "CD_LBDRUG") return "★ 라벨 발행 대상 약품 설정";
-            if (upperName == "CD_MINDRUG") return "★ 마약류/관리 대상 약품 매핑 기준";
-            if (upperName == "CD_NAMETAG") return "★ 네임택/식별표 출력 설정";
-            if (upperName == "CD_PERSON_LINK") return "사용자 계정 및 외부 시스템 연동 링크";
-            if (upperName == "CD_ROCOUNT") return "조제 롤 카운터 장치 상태 정보";
-            if (upperName == "CD_USER_PRESET") return "사용자별 UI 및 프리셋 설정 데이터";
-            
-            if (upperName == "DA_BASE_PRICE") return "★ 자동 조제용 기본 약가 기준 테이블";
-            if (upperName == "DA_CD_BASE") return "★ 자동 조제기 기초 연동 코드";
-            if (upperName == "DA_CONFIG") return "★ 자동 조제기 제어 환경 설정";
-            if (upperName == "DA_GOODS") return "★ 자동 조제기 카트리지 약품 매핑 정보";
-            if (upperName == "DA_GOODS_PRICE") return "★ 조제 대상 약품 단가 상세 정보";
-            if (upperName == "DA_MAIN") return "★ 자동 조제 메스터 처방 대기 테이블";
-            if (upperName == "DA_SUB_PHARM") return "★ 보조 조제기 약품 및 조제 상세";
-            if (upperName == "DA_TEMP_SUB_PHARM") return "보조 조제기 임시 작업용 백업 테이블";
-            
-            if (upperName == "IMSI_CHECK") return "임시 정합성 검사 백업";
-            if (upperName == "INS_CD_BASE") return "보험수가 청구 기준 코드 정보";
-            if (upperName == "INS_COMPOS") return "보험 약품 성분/복합제 구성 정보";
-            
-            // 접두사 및 패턴 매핑
-            if (upperName.StartsWith("TEMP_") || upperName.Contains("_TMP") || upperName.Contains("_IMSI") || upperName.StartsWith("IMSI_"))
-                return "임시 작업/백업 테이블";
-            if (upperName.EndsWith("_LOG") || upperName.Contains("_HIS") || upperName.Contains("LOG_") || upperName.EndsWith("_LOG2"))
-                return "이력 보관 및 트랜잭션 로그 테이블";
-            if (upperName.StartsWith("CD_")) return "시스템 기준 코드 및 장치 설정 테이블";
-            if (upperName.StartsWith("DA_")) return "자동 조제기 연동 및 실시간 조제 데이터 테이블";
-            if (upperName.StartsWith("INS_")) return "보험 청구 및 약품 성분 기준 테이블";
-            
-            if (upperName.StartsWith("TBSIM")) return "약품 정보 및 기초 코드";
-            if (upperName.StartsWith("TBSID")) return "처방전 및 조제 관련 데이터";
-            if (upperName.StartsWith("TBSIT")) return "환자 기본 정보/차트 관련 데이터";
-            if (upperName.StartsWith("TBSIR")) return "청구 및 공단 보험 데이터";
-            if (upperName.StartsWith("TBSIB")) return "보험 정보 및 요양기관 코드";
-            if (upperName.StartsWith("TBSNM")) return "마약류 취급보고/조제 관련 데이터";
-            if (upperName.StartsWith("PHMS_")) return "복약지도 및 약국 전산 정보";
-            if (upperName.StartsWith("TBSWH")) return "약품 입출고/창고 재고 관리";
-            if (upperName.StartsWith("KPDS_")) return "교부 정보 연동 데이터";
-            if (upperName.StartsWith("JVM_")) return "ATC 조제기 기계 연동 설정";
-            if (upperName.StartsWith("ZIP_")) return "우편번호 주소 마스터";
-
-            return "기타 시스템 관리 테이블";
-        }
-
-        private void CmbDbMapSelector_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (_cmbDbMapSelector.SelectedItem == null) return;
-            string dbName = _cmbDbMapSelector.SelectedItem.ToString();
-
-            DataTable dt = new DataTable();
-            dt.Columns.Add("테이블명");
-            dt.Columns.Add("행 수", typeof(int));
-            dt.Columns.Add("설명");
-
-            if (_isDemo)
-            {
-                if (dbName == "PM_MAIN")
-                {
-                    dt.Rows.Add("TBSID040_03", 18044, GetTableDescription("TBSID040_03"));
-                    dt.Rows.Add("TBSID040_04", 40157, GetTableDescription("TBSID040_04"));
-                    dt.Rows.Add("TBSID040_05", 40224, GetTableDescription("TBSID040_05"));
-                    dt.Rows.Add("TBSIT000_01", 15200, GetTableDescription("TBSIT000_01"));
-                    dt.Rows.Add("TBSIM000_01", 8230, GetTableDescription("TBSIM000_01"));
-                    dt.Rows.Add("TBSIM000_08", 450, GetTableDescription("TBSIM000_08"));
-                    dt.Rows.Add("TBSIR000_01", 230, GetTableDescription("TBSIR000_01"));
-                    dt.Rows.Add("TBSIB_H024_1", 1200, GetTableDescription("TBSIB_H024_1"));
-                    dt.Rows.Add("TEMP_MAPPING", 15, GetTableDescription("TEMP_MAPPING"));
-                }
-                else if (dbName == "PMPLUS_DUMS")
-                {
-                    dt.Rows.Add("TBSNM020_04", 18044, GetTableDescription("TBSNM020_04"));
-                    dt.Rows.Add("TBSNM020_05", 40224, GetTableDescription("TBSNM020_05"));
-                    dt.Rows.Add("TBSNM020_06", 18208, GetTableDescription("TBSNM020_06"));
-                    dt.Rows.Add("TBSNM020_07", 40575, GetTableDescription("TBSNM020_07"));
-                    dt.Rows.Add("TBSNM010_01", 3843, GetTableDescription("TBSNM010_01"));
-                    dt.Rows.Add("TBSNM010_02", 17561, GetTableDescription("TBSNM010_02"));
-                }
-                else if (dbName == "PMPLUS_IMAGE")
-                {
-                    dt.Rows.Add("DRUGIMG", 6061, GetTableDescription("DRUGIMG"));
-                    dt.Rows.Add("DRUGIMG_FRONT", 2677, GetTableDescription("DRUGIMG_FRONT"));
-                    dt.Rows.Add("DRUGIMG_PKG", 345, GetTableDescription("DRUGIMG_PKG"));
-                    dt.Rows.Add("CD_DRUGFORM", 32134, GetTableDescription("CD_DRUGFORM"));
-                }
-                else if (dbName == "PMPLUS_JOBLOG")
-                {
-                    dt.Rows.Add("PM_PRES_LOG", 120455, GetTableDescription("PM_PRES_LOG"));
-                    dt.Rows.Add("CUSTOMER_PRINT_LOG", 1117, GetTableDescription("CUSTOMER_PRINT_LOG"));
-                    dt.Rows.Add("BACORD_TOTAL_CHK", 19, GetTableDescription("BACORD_TOTAL_CHK"));
-                }
-                _dgvDbMapTables.DataSource = dt;
-                _dgvDbMapTables.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-                AdjustDbMapExplorerLayout();
-            }
-            else
-            {
-                if (_cmbDatabases.SelectedItem == null || _cmbDatabases.Items.Count == 0)
-                {
-                    dt.Rows.Clear();
-                    _dgvDbMapTables.DataSource = dt;
-                    AdjustDbMapExplorerLayout();
-                    return;
-                }
-
-                string connStr = BuildConnectionString(false);
-                SqlConnectionStringBuilder sb = new SqlConnectionStringBuilder(connStr);
-                sb.InitialCatalog = dbName;
-
-                this.Cursor = Cursors.WaitCursor;
-                try
-                {
-                    using (SqlConnection conn = new SqlConnection(sb.ConnectionString))
-                    {
-                        conn.Open();
-                        string sql = @"
-                            SELECT t.name AS [테이블명], SUM(p.rows) AS [행 수]
-                            FROM sys.tables t
-                            INNER JOIN sys.indexes i ON t.object_id = i.object_id
-                            INNER JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
-                            WHERE t.is_ms_shipped = 0 AND i.index_id IN (0,1)
-                            GROUP BY t.name
-                            ORDER BY t.name;";
-                        using (SqlCommand cmd = new SqlCommand(sql, conn))
-                        {
-                            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                            {
-                                da.Fill(dt);
-                            }
-                        }
-                    }
-
-                    // 실서버 모드에서 테이블 설명 동적 매핑
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        row["설명"] = GetTableDescription(row["테이블명"].ToString());
-                    }
-
-                    _dgvDbMapTables.DataSource = dt;
-                _dgvDbMapTables.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-                    AdjustDbMapExplorerLayout();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("테이블 조회 실패: " + ex.Message, "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                finally
-                {
-                    this.Cursor = Cursors.Default;
-                }
-            }
-        }
-
-        private void TxtDbMapSearch_TextChanged(object sender, EventArgs e)
-        {
-            DataTable dt = _dgvDbMapTables.DataSource as DataTable;
-            if (dt == null) return;
-
-            string filter = _txtDbMapSearch.Text.Trim();
-            if (string.IsNullOrEmpty(filter))
-            {
-                dt.DefaultView.RowFilter = "";
-            }
-            else
-            {
-                dt.DefaultView.RowFilter = string.Format("[테이블명] LIKE '%{0}%'", filter);
-            }
-
-            AdjustDbMapExplorerLayout();
-        }
-
-        private void DgvDbMapTables_SelectionChanged(object sender, EventArgs e)
-        {
-            if (_dgvDbMapTables.CurrentRow == null) return;
-            string tableName = _dgvDbMapTables.CurrentRow.Cells["테이블명"].Value.ToString();
-            string dbName = _cmbDbMapSelector.SelectedItem != null ? _cmbDbMapSelector.SelectedItem.ToString() : "";
-
-            DataTable dt = new DataTable();
-            dt.Columns.Add("컬럼명");
-            dt.Columns.Add("데이터 타입");
-            dt.Columns.Add("최대 크기", typeof(int));
-            dt.Columns.Add("Null 허용");
-            dt.Columns.Add("기본키(PK)");
-            dt.Columns.Add("설명");
-
-            // Auto-populated Join Guide logic
-            string guide = "";
-
-            if (_isDemo)
-            {
-                if (tableName == "TBSID040_03")
-                {
-                    dt.Rows.Add("drug_seq", "nvarchar", 14, "NO", "🔑 PK", GetColumnDescription(tableName, "drug_seq"));
-                    dt.Rows.Add("pres_dtime", "nvarchar", 19, "NO", "", GetColumnDescription(tableName, "pres_dtime"));
-                    dt.Rows.Add("pat_nm", "nvarchar", 20, "YES", "", GetColumnDescription(tableName, "pat_nm"));
-                    dt.Rows.Add("chrtno", "nvarchar", 10, "NO", "", GetColumnDescription(tableName, "chrtno"));
-                    dt.Rows.Add("pat_jumin_no", "nvarchar", 14, "YES", "", GetColumnDescription(tableName, "pat_jumin_no"));
-                    dt.Rows.Add("PRES_PRGRS_STATE", "nvarchar", 1, "YES", "", GetColumnDescription(tableName, "PRES_PRGRS_STATE"));
-                    
-                    guide = "【 테이블 [TBSID040_03] (처방전 마스터 헤더) 분석 가이드 】\r\n\r\n" +
-                            "  • 설명: 환자의 처방전 정보 전체를 총괄하는 헤더 테이블입니다.\r\n" +
-                            "  • 핵심 데이터 연계:\r\n" +
-                            "    - 환자 기본 정보: [chrtno] 필드를 기준으로 PM_MAIN..TBSIT000_01(환자마스터) 테이블과 조인\r\n" +
-                            "    - 약품 처방 내역 상세: [drug_seq] 필드를 기본 축으로 PM_MAIN..TBSID040_04(처방상세) 테이블과 조인\r\n" +
-                            "    - 마약류 취급보고 대기 연동: [drug_seq] 필드를 기준으로 PMPLUS_DUMS..TBSNM020_04(마약헤더대기) 테이블과 조인";
-                }
-                else if (tableName == "TBSID040_04")
-                {
-                    dt.Rows.Add("drug_seq", "nvarchar", 14, "NO", "🔑 PK", GetColumnDescription(tableName, "drug_seq"));
-                    dt.Rows.Add("drug_code", "nvarchar", 13, "NO", "🔑 PK", GetColumnDescription(tableName, "drug_code"));
-                    dt.Rows.Add("drug_qty", "numeric", 9, "YES", "", GetColumnDescription(tableName, "drug_qty"));
-                    dt.Rows.Add("dan", "nvarchar", 10, "YES", "", GetColumnDescription(tableName, "dan"));
-                    
-                    guide = "【 테이블 [TBSID040_04] (처방전 상세 약품 내역) 분석 가이드 】\r\n\r\n" +
-                            "  • 설명: 처방전에 포함된 세부 약품 내역을 저장하는 테이블입니다.\r\n" +
-                            "  • 핵심 데이터 연계:\r\n" +
-                            "    - 처방전 기본 헤더 정보: [drug_seq] 필드로 PM_MAIN..TBSID040_03(처방마스터)와 조인\r\n" +
-                            "    - 약품 상세 마스터 정보: [drug_code] 필드로 PM_MAIN..TBSIM000_01(약품마스터)와 조인하여 약품명 조회\r\n" +
-                            "    - 마약류 취급보고 상세 대기 연동: [drug_seq] 및 [drug_code] 복합키로 PMPLUS_DUMS..TBSNM020_05(마약상세대기)와 조인";
-                }
-                else if (tableName == "TBSNM020_05")
-                {
-                    dt.Rows.Add("drug_seq", "nvarchar", 14, "NO", "🔑 PK", GetColumnDescription(tableName, "drug_seq"));
-                    dt.Rows.Add("drug_code", "nvarchar", 13, "NO", "🔑 PK", GetColumnDescription(tableName, "drug_code"));
-                    dt.Rows.Add("INPUT_SEQ", "nvarchar", 2, "NO", "🔑 PK", GetColumnDescription(tableName, "INPUT_SEQ"));
-                    dt.Rows.Add("IDX", "int", 4, "NO", "", GetColumnDescription(tableName, "IDX"));
-                    dt.Rows.Add("REPORT_GUBUN", "nvarchar", 1, "YES", "", GetColumnDescription(tableName, "REPORT_GUBUN"));
-                    dt.Rows.Add("SEND_GUBUN", "nvarchar", 1, "YES", "", GetColumnDescription(tableName, "SEND_GUBUN"));
-                    
-                    guide = "【 테이블 [TBSNM020_05] (마약류 처방 상세 대기) 분석 가이드 】\r\n\r\n" +
-                            "  • 설명: 마약류 전송 처리를 위해 처방 내역을 대기하는 테이블입니다.\r\n" +
-                            "  • 핵심 데이터 연계:\r\n" +
-                            "    - 실처방 상세 내역 조인: [drug_seq], [drug_code] 복합키로 PM_MAIN..TBSID040_04와 연계\r\n" +
-                            "    - 조제 일련번호 자동 부여: [IDX] 필드를 기준으로 1부터 순차적으로 일련번호 [INPUT_SEQ]를 정렬 부여\r\n" +
-                            "    - 정합성 유의사항: PM_MAIN..TBSID040_03 (처방마스터) 삭제 시 본 상세 대기 테이블만 고립되어 남는 유령 데이터가 발생하여 마약 전송 오류를 유발할 수 있으므로 삭제 관리가 필수적입니다.";
-                }
-                else
-                {
-                    dt.Rows.Add("drug_seq", "nvarchar", 14, "YES", "", GetColumnDescription(tableName, "drug_seq"));
-                    dt.Rows.Add("chrtno", "nvarchar", 10, "YES", "", GetColumnDescription(tableName, "chrtno"));
-                    dt.Rows.Add("drug_code", "nvarchar", 13, "YES", "", GetColumnDescription(tableName, "drug_code"));
-                    dt.Rows.Add("mod_dtime", "datetime", 8, "YES", "", "최종 수정 일시");
-
-                    guide = string.Format(
-                            "【 테이블 [{0}] 분석 가이드 】\r\n\r\n" +
-                            "  • 설명: {1}\r\n" +
-                            "  • 핵심 데이터 연계:\r\n" +
-                            "    - 주로 [drug_seq](처방번호) 또는 [drug_code](약품코드)를 인덱스로 활용하여 타 DB 테이블과 연계하는 구조입니다.",
-                            tableName, GetTableDescription(tableName));
-                }
-                _dgvDbMapColumns.DataSource = dt;
-                _dgvDbMapColumns.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-                _txtDbMapJoinGuide.Text = guide;
-                AdjustDbMapExplorerLayout();
-            }
-            else
-            {
-                if (_cmbDatabases.SelectedItem == null || _cmbDatabases.Items.Count == 0)
-                {
-                    dt.Rows.Clear();
-                    _dgvDbMapColumns.DataSource = dt;
-                    _txtDbMapJoinGuide.Text = "상단 데이터베이스를 먼저 연결하고 불러와 주십시오.";
-                    AdjustDbMapExplorerLayout();
-                    return;
-                }
-
-                string connStr = BuildConnectionString(false);
-                SqlConnectionStringBuilder sb = new SqlConnectionStringBuilder(connStr);
-                sb.InitialCatalog = dbName;
-
-                this.Cursor = Cursors.WaitCursor;
-                try
-                {
-                    using (SqlConnection conn = new SqlConnection(sb.ConnectionString))
-                    {
-                        conn.Open();
-                        string sql = @"
-                            SELECT 
-                                c.name AS [컬럼명],
-                                t.name AS [데이터 타입],
-                                c.max_length AS [최대 크기],
-                                CASE WHEN c.is_nullable = 1 THEN 'YES' ELSE 'NO' END AS [Null 허용],
-                                CASE WHEN ISNULL((SELECT 1 FROM sys.index_columns ic 
-                                                 INNER JOIN sys.indexes i ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-                                                 WHERE i.is_primary_key = 1 AND ic.object_id = c.object_id AND ic.column_id = c.column_id), 0) = 1 
-                                     THEN '🔑 PK' ELSE '' END AS [기본키(PK)]
-                            FROM sys.columns c
-                            INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
-                            WHERE c.object_id = OBJECT_ID(@tableName)
-                            ORDER BY c.column_id;";
-                        using (SqlCommand cmd = new SqlCommand(sql, conn))
-                        {
-                            cmd.Parameters.AddWithValue("@tableName", tableName);
-                            using (SqlDataAdapter da = new SqlDataAdapter(cmd))
-                            {
-                                da.Fill(dt);
-                            }
-                        }
-                    }
-
-                    // 실서버 모드에서도 컬럼 설명 동적 매핑
-                    if (!dt.Columns.Contains("설명"))
-                    {
-                        dt.Columns.Add("설명", typeof(string));
-                    }
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        row["설명"] = GetColumnDescription(tableName, row["컬럼명"].ToString());
-                    }
-
-                    _dgvDbMapColumns.DataSource = dt;
-                _dgvDbMapColumns.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-                    AdjustDbMapExplorerLayout();
-
-                    // Compute a dynamic relational guide based on columns found
-                    List<string> cols = new List<string>();
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        cols.Add(row["컬럼명"].ToString().ToLower());
-                    }
-
-                    List<string> relations = new List<string>();
-                    if (cols.Contains("drug_seq"))
-                    {
-                        relations.Add("    - [drug_seq] 처방 일련번호 검출: 처방마스터(PM_MAIN..TBSID040_03) 및 마약대기(PMPLUS_DUMS..TBSNM020_04) 등과 Join 연계");
-                    }
-                    if (cols.Contains("chrtno"))
-                    {
-                        relations.Add("    - [chrtno] 환자 차트번호 검출: 환자기본마스터(PM_MAIN..TBSIT000_01) 테이블과 Join하여 환자 신상 연계");
-                    }
-                    if (cols.Contains("drug_code"))
-                    {
-                        relations.Add("    - [drug_code] 약품코드 검출: 약품마스터(PM_MAIN..TBSIM000_01) 및 약품이미지(PMPLUS_IMAGE..DRUGIMG)와 Join");
-                    }
-                    if (cols.Contains("pat_jumin_no") || cols.Contains("jumin") || cols.Contains("jumin_no"))
-                    {
-                        relations.Add("    - [주민번호] 필드 검출: 개인정보보호 조치(암호화) 대상이며 복구 후 환자 조인 키로 사용 가능");
-                    }
-
-                    if (relations.Count > 0)
-                    {
-                        guide = string.Format(
-                            "【 테이블 [{0}] 핵심 컬럼 분석 가이드 】\r\n\r\n" +
-                            "  • 설명: {1}\r\n" +
-                            "  • 데이터 연계 정보:\r\n" +
-                            "{2}",
-                            tableName,
-                            GetTableDescription(tableName),
-                            string.Join("\r\n", relations.ToArray())
-                        );
-                    }
-                    else
-                    {
-                        guide = string.Format(
-                            "【 테이블 [{0}] 가이드 】\r\n\r\n" +
-                            "  • 설명: {1}\r\n" +
-                            "  • 데이터 연계 정보:\r\n" +
-                            "    - 공통 조인 복합 키(drug_seq, chrtno 등)가 직접 검출되지 않았으나,\r\n" +
-                            "      기타 외래키 및 보조 테이블 매핑에 의해 연결될 수 있습니다.",
-                            tableName,
-                            GetTableDescription(tableName)
-                        );
-                    }
-                    _txtDbMapJoinGuide.Text = guide;
-                }
-                catch (Exception ex)
-                {
-                    _txtDbMapJoinGuide.Text = "컬럼 정보를 조회할 수 없습니다. " + ex.Message;
-                }
-                finally
-                {
-                    this.Cursor = Cursors.Default;
-                }
             }
         }
 

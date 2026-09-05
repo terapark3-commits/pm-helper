@@ -1,8 +1,8 @@
 {
-    "version":  "5.19.0",
+    "version":  "5.20.0",
     "appName":  "pm+helper",
     "repoOwner":  "terapark3-commits",
     "repoName":  "pm-helper",
-    "releaseDate":  "2026-09-01",
-    "releaseNotes":  "1. PM_DRUGUPDATE / PM_DURUPDATE ?꾩떆 ?곗씠?곕쿋?댁뒪 媛뺤젣 ?곌껐 醫낅즺 諛??덉쟾 ??젣 湲곕뒫 異붽?\n2. UI ?덉씠?꾩썐 ?덉젙??諛?UTF-8 ?쒓? ?몄퐫???꾩쟾 蹂댁젙\n3. GitHub Releases 湲곕컲 ?먮룞 ?낅뜲?댄듃 ?붿쭊 ?묒옱"
+    "releaseDate":  "2026-09-05",
+    "releaseNotes":  "1. 메인 탭 개편: 기존 \u0027DB 상세 지도 / 스키마 탐색기\u0027를 단독 \u0027쿼리 실행기\u0027로 전면 개편\n2. 상단 탭 텍스트 및 레이아웃 직관화\n3. 사용자 매뉴얼 및 배포 동기화"
 }
