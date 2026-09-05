@@ -695,16 +695,12 @@ namespace MssqlPatientHelper
         private string _lastSqlServiceStatus = "UNKNOWN"; // For demo mode mock behavior
 
         // UI Controls - SplitContainers for layouts and their distance settings
-        private SplitContainer _splitExplorerMain;
-        private SplitContainer _splitRightExplorer;
         internal SplitContainer _splitChartResolver;
         private SplitContainer _splitUser;
         private SplitContainer _splitCard;
         private SplitContainer _splitLabel;
         private SplitContainer _splitRx;
 
-        private int _distExplorerMain = 350;
-        private int _distRightExplorer = 360;
         internal int _distChartResolver = 460;
         private int _distUser = 550;
         private int _distCard = 550;
@@ -2633,8 +2629,6 @@ namespace MssqlPatientHelper
                             _cmbDatabases.Items.Add(v);
                             _cmbDatabases.SelectedIndex = 0;
                             break;
-                        case "distExplorerMain":  if (int.TryParse(v, out iv)) _distExplorerMain  = Math.Max(100, Math.Min(1400, iv)); break;
-                        case "distRightExplorer": if (int.TryParse(v, out iv)) _distRightExplorer = Math.Max(100, Math.Min(1000, iv)); break;
                         case "distChartResolver": if (int.TryParse(v, out iv)) _distChartResolver = Math.Max(100, Math.Min(1200, iv)); break;
                         case "distUser":          if (int.TryParse(v, out iv)) _distUser          = Math.Max(100, Math.Min(1400, iv)); break;
                         case "distCard":          if (int.TryParse(v, out iv)) _distCard          = Math.Max(100, Math.Min(1400, iv)); break;
@@ -2682,8 +2676,6 @@ namespace MssqlPatientHelper
                     sw.WriteLine("integratedSec=True");
                     sw.WriteLine("user="             + _txtUser.Text.Trim());
                     sw.WriteLine("database="         + (_cmbDatabases.SelectedItem != null ? _cmbDatabases.SelectedItem.ToString() : ""));
-                    sw.WriteLine("distExplorerMain=" + _distExplorerMain);
-                    sw.WriteLine("distRightExplorer="+ _distRightExplorer);
                     sw.WriteLine("distChartResolver="+ _distChartResolver);
                     sw.WriteLine("distUser="         + _distUser);
                     sw.WriteLine("distCard="         + _distCard);
