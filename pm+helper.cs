@@ -453,18 +453,17 @@ namespace MssqlPatientHelper
         private ToolStripStatusLabel _statusMainLabel;
 
         // UI Controls - Step 1 (Search Prescription)
-        private TextBox _txtSearchName;
-        private TextBox _txtSearchJumin;
-        private Button _btnSearchRx;
-        private DataGridView _dgvResults;
+        internal TextBox _txtSearchName;
+        internal TextBox _txtSearchJumin;
+        internal Button _btnSearchRx;
+        internal DataGridView _dgvResults;
 
         // UI Controls - Step 2 (Verify Customer)
-        private TextBox _txtSearchChrtNo;
-        private Button _btnSearchCust;
-        private Button _btnRestoreCust;
+        internal TextBox _txtSearchChrtNo;
+        internal Button _btnSearchCust;
+        internal Button _btnRestoreCust;
         private TabControl _tabControl;
-        private TabPage _tabMainWorkspace;
-        private TabPage _tabTroubleshooter;
+        private TabPage _tabChartResolver;
         private TabPage _tabDoctorLicense;
         private TabPage _tabDbRecovery;
         private CheckBox _chkDbPmMain;
@@ -481,17 +480,17 @@ namespace MssqlPatientHelper
         private Button _btnSearchDoctors;
         private Button _btnDeleteDoctors;
         private Label _lblDoctorStatus;
-        private TroubleshooterForm _troubleshooter;
-        private Label _lblCustChrtNo;
-        private Label _lblCustName;
-        private Label _lblCustNameTitle;
-        private Label _lblCustChrtNoBadge;
-        private Label _lblCustJumin;
-        private Label _lblCustPhone;
-        private Label _lblCustAddress;
-        private Label _lblCustFirstVisit;
-        private ListBox _lstRxHistory;
-        private Label _lblToast;
+        internal TroubleshooterForm _troubleshooter;
+        internal Label _lblCustChrtNo;
+        internal Label _lblCustName;
+        internal Label _lblCustNameTitle;
+        internal Label _lblCustChrtNoBadge;
+        internal Label _lblCustJumin;
+        internal Label _lblCustPhone;
+        internal Label _lblCustAddress;
+        internal Label _lblCustFirstVisit;
+        internal ListBox _lstRxHistory;
+        internal Label _lblToast;
         private Timer _toastTimer;
         private string _detectedDateColumn = null;
 
@@ -719,14 +718,14 @@ namespace MssqlPatientHelper
             LoadConfig();
             RefreshAttachedBackupStatus();
 
-            // Instantiate embedded Troubleshooter Form
+            // Instantiate embedded Troubleshooter Form into unified Chart Resolver Tab
             _troubleshooter = new TroubleshooterForm(this, _chkDemoMode.Checked)
             {
                 TopLevel = false,
                 FormBorderStyle = FormBorderStyle.None,
                 Dock = DockStyle.Fill
             };
-            _tabTroubleshooter.Controls.Add(_troubleshooter);
+            _tabChartResolver.Controls.Add(_troubleshooter);
             _troubleshooter.Show();
 
             ApplyModernUiEnhancements();
@@ -1529,21 +1528,13 @@ namespace MssqlPatientHelper
             };
             dispenseTabHost.Controls.Add(_subTabDispenseCustomer);
 
-            // 서브 Tab 1: 차트번호 검증 및 조회
-            _tabMainWorkspace = new TabPage
+            // 서브 Tab 1: 차트 검증 및 오류 해결 (기존 검증조회 + 오류해결도구 100% 통합)
+            _tabChartResolver = new TabPage
             {
-                Text = "🔍 차트번호 검증 및 조회",
+                Text = "🛠️ 차트 검증 및 오류 해결",
                 BackColor = ColorBgMain
             };
-            _subTabDispenseCustomer.TabPages.Add(_tabMainWorkspace);
-
-            // 서브 Tab 2: 차트 오류 해결 도구
-            _tabTroubleshooter = new TabPage
-            {
-                Text = "🛠️ 차트 오류 해결 도구",
-                BackColor = ColorBgMain
-            };
-            _subTabDispenseCustomer.TabPages.Add(_tabTroubleshooter);
+            _subTabDispenseCustomer.TabPages.Add(_tabChartResolver);
 
             // 서브 Tab 3: 백업로그청구기반검사 (차트오류해결도구 바로 옆)
             _tabLogClaimMismatch = new TabPage
@@ -1803,240 +1794,8 @@ namespace MssqlPatientHelper
             _tabDbRecovery.Controls.Add(_txtDbRecoveryLog);
             _txtDbRecoveryLog.BringToFront();
 
-            // 2. Main Workspace SplitContainer
-            SplitContainer splitMain = new SplitContainer();
-            splitMain.Dock = DockStyle.Fill;
-            splitMain.Orientation = Orientation.Vertical;
-            splitMain.Size = new Size(1100, 600);
-            splitMain.Panel1MinSize = 450;
-            splitMain.Panel2MinSize = 450;
-            splitMain.SplitterDistance = 600;
-            splitMain.BackColor = ColorBorder;
-            _tabMainWorkspace.Controls.Add(splitMain);
-
-            // 2-1. Left Panel (Search & Grid results)
-            Panel pnlLeft = new Panel { Dock = DockStyle.Fill, BackColor = ColorBgMain, Padding = new Padding(15) };
-            splitMain.Panel1.Controls.Add(pnlLeft);
-
-            // Step 1 Header
-            Panel pnlLeftHeader = new Panel { Dock = DockStyle.Top, Height = 40 };
-            Label lblStep1 = new Label { Text = "Step 1", Location = new Point(0, 5), Size = new Size(50, 22), BackColor = Color.FromArgb(30, 58, 138), ForeColor = Color.FromArgb(191, 219, 254), TextAlign = ContentAlignment.MiddleCenter, Font = new Font("맑은 고딕", 8F, FontStyle.Bold) };
-            Label lblLeftTitle = new Label { Text = "처방 리스트에서 차트번호 조회", Location = new Point(60, 5), Size = new Size(400, 25), Font = new Font("맑은 고딕", 11F, FontStyle.Bold) };
-            pnlLeftHeader.Controls.Add(lblStep1);
-            pnlLeftHeader.Controls.Add(lblLeftTitle);
-
-            // Search Inputs Panel
-            Panel pnlSearch = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 80,
-                BackColor = ColorBgCard,
-                Padding = new Padding(12)
-            };
-
-            Label lblSearchName = new Label { Text = "환자 이름", Location = new Point(12, 10), Size = new Size(70, 20), ForeColor = ColorTextSec };
-            _txtSearchName = new TextBox { Location = new Point(12, 33), Size = new Size(130, 25), BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
-            pnlSearch.Controls.Add(lblSearchName);
-            pnlSearch.Controls.Add(_txtSearchName);
-
-            Label lblSearchJumin = new Label { Text = "주민번호 앞 7자리", Location = new Point(160, 10), Size = new Size(120, 20), ForeColor = ColorTextSec };
-            _txtSearchJumin = new TextBox { Location = new Point(160, 33), Size = new Size(150, 25), MaxLength = 8, BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
-            _txtSearchJumin.TextChanged += TxtSearchJumin_TextChanged;
-            pnlSearch.Controls.Add(lblSearchJumin);
-            pnlSearch.Controls.Add(_txtSearchJumin);
-
-            _btnSearchRx = new Button
-            {
-                Text = "처방 검색",
-                Location = new Point(330, 28),
-                Size = new Size(110, 32),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = ColorIndigo,
-                ForeColor = Color.White,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
-            };
-            _btnSearchRx.FlatAppearance.BorderSize = 0;
-            _btnSearchRx.Click += BtnSearchRx_Click;
-            pnlSearch.Controls.Add(_btnSearchRx);
-
-            // Spacer Panel
-            Panel pnlSpacer1 = new Panel { Dock = DockStyle.Top, Height = 15 };
-
-            // DataGridView Results
-            _dgvResults = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                BackgroundColor = ColorBgCard,
-                ForeColor = ColorTextMain,
-                GridColor = ColorBorder,
-                RowHeadersVisible = false,
-                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-                MultiSelect = false,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                ReadOnly = true,
-                BorderStyle = BorderStyle.None,
-                EnableHeadersVisualStyles = false,
-                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
-                ColumnHeadersHeight = 32
-            };
-            _dgvResults.ColumnHeadersDefaultCellStyle.BackColor = ColorBgMain;
-            _dgvResults.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            _dgvResults.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold);
-            _dgvResults.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 4, 6, 4);
-            _dgvResults.DefaultCellStyle.BackColor = ColorBgCard;
-            _dgvResults.DefaultCellStyle.ForeColor = ColorTextMain;
-            _dgvResults.DefaultCellStyle.SelectionBackColor = ColorIndigo;
-            _dgvResults.DefaultCellStyle.SelectionForeColor = Color.White;
-            _dgvResults.CellClick += DgvResults_CellClick;
-            _dgvResults.CellFormatting += DgvResults_CellFormatting;
-
-            pnlLeft.Controls.Add(_dgvResults);
-            pnlLeft.Controls.Add(pnlSpacer1);
-            pnlLeft.Controls.Add(pnlSearch);
-            pnlLeft.Controls.Add(pnlLeftHeader);
-
-            // 2-2. Right Panel (Customer Details & verification)
-            Panel pnlRight = new Panel { Dock = DockStyle.Fill, BackColor = ColorBgMain, Padding = new Padding(15) };
-            splitMain.Panel2.Controls.Add(pnlRight);
-
-            // Step 2 Header
-            Panel pnlRightHeader = new Panel { Dock = DockStyle.Top, Height = 40 };
-            Label lblStep2 = new Label { Text = "Step 2", Location = new Point(0, 5), Size = new Size(50, 22), BackColor = Color.FromArgb(6, 95, 70), ForeColor = Color.FromArgb(167, 243, 208), TextAlign = ContentAlignment.MiddleCenter, Font = new Font("맑은 고딕", 8F, FontStyle.Bold) };
-            Label lblRightTitle = new Label { Text = "차트번호 고객 정보 검증 (조회 및 대조)", Location = new Point(60, 5), Size = new Size(400, 25), Font = new Font("맑은 고딕", 11F, FontStyle.Bold) };
-            pnlRightHeader.Controls.Add(lblStep2);
-            pnlRightHeader.Controls.Add(lblRightTitle);
-
-            // Search ChartNo Panel
-            Panel pnlSearchCust = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 80,
-                BackColor = ColorBgCard,
-                Padding = new Padding(12)
-            };
-
-            Label lblSearchChrtNo = new Label { Text = "차트번호 직접 입력", Location = new Point(12, 10), Size = new Size(130, 20), ForeColor = ColorTextSec };
-            _txtSearchChrtNo = new TextBox { Location = new Point(12, 33), Size = new Size(130, 25), BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
-            pnlSearchCust.Controls.Add(lblSearchChrtNo);
-            pnlSearchCust.Controls.Add(_txtSearchChrtNo);
-
-            _btnSearchCust = new Button
-            {
-                Text = "고객 조회",
-                Location = new Point(155, 28),
-                Size = new Size(85, 32),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = ColorEmerald,
-                ForeColor = Color.White,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
-            };
-            _btnSearchCust.FlatAppearance.BorderSize = 0;
-            _btnSearchCust.Click += BtnSearchCust_Click;
-            pnlSearchCust.Controls.Add(_btnSearchCust);
-
-            _btnRestoreCust = new Button
-            {
-                Text = "고객 복구",
-                Location = new Point(250, 28),
-                Size = new Size(85, 32),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(245, 158, 11), // Amber 500
-                ForeColor = Color.Black,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
-            };
-            _btnRestoreCust.FlatAppearance.BorderSize = 0;
-            _btnRestoreCust.Click += BtnRestoreCust_Click;
-            pnlSearchCust.Controls.Add(_btnRestoreCust);
-
-            // Toast Alert Label in Step 2 panel
-            _lblToast = new Label
-            {
-                Location = new Point(345, 28),
-                Size = new Size(90, 32),
-                BackColor = Color.FromArgb(30, 41, 59),
-                ForeColor = ColorEmerald,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold),
-                TextAlign = ContentAlignment.MiddleCenter,
-                BorderStyle = BorderStyle.FixedSingle,
-                Visible = false
-            };
-            pnlSearchCust.Controls.Add(_lblToast);
-
-            // Spacer Panel
-            Panel pnlSpacer2 = new Panel { Dock = DockStyle.Top, Height = 15 };
-
-            // Detail Card Panel
-            Panel pnlDetailCard = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColorBgCard,
-                Padding = new Padding(15)
-            };
-
-            // Customer Name & Chart Badge layout
-            Panel pnlCustTitle = new Panel { Dock = DockStyle.Top, Height = 35 };
-            _lblCustNameTitle = new Label { Text = "선택된 고객 없음", Location = new Point(0, 0), Size = new Size(150, 30), Font = new Font("맑은 고딕", 12F, FontStyle.Bold), ForeColor = Color.White };
-            _lblCustChrtNoBadge = new Label { Text = "-", Location = new Point(160, 4), Size = new Size(120, 22), TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(6, 95, 70), ForeColor = Color.FromArgb(167, 243, 208), Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            pnlCustTitle.Controls.Add(_lblCustNameTitle);
-            pnlCustTitle.Controls.Add(_lblCustChrtNoBadge);
-
-            // Grid Layout for details
-            Panel pnlCustGrid = new Panel { Dock = DockStyle.Top, Height = 150, Padding = new Padding(0, 10, 0, 0) };
-
-            int ly = 15;
-            Label l1 = new Label { Text = "차트번호:", Location = new Point(0, ly), Size = new Size(80, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _lblCustChrtNo = new Label { Text = "-", Location = new Point(90, ly), Size = new Size(200, 20), ForeColor = ColorTextMain };
-            pnlCustGrid.Controls.Add(l1); pnlCustGrid.Controls.Add(_lblCustChrtNo);
-
-            ly += 25;
-            Label l2 = new Label { Text = "등록 이름:", Location = new Point(0, ly), Size = new Size(80, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _lblCustName = new Label { Text = "-", Location = new Point(90, ly), Size = new Size(200, 20), ForeColor = ColorTextMain, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            pnlCustGrid.Controls.Add(l2); pnlCustGrid.Controls.Add(_lblCustName);
-
-            ly += 25;
-            Label l3 = new Label { Text = "주민번호:", Location = new Point(0, ly), Size = new Size(80, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _lblCustJumin = new Label { Text = "-", Location = new Point(90, ly), Size = new Size(200, 20), ForeColor = ColorTextMain };
-            pnlCustGrid.Controls.Add(l3); pnlCustGrid.Controls.Add(_lblCustJumin);
-
-            ly += 25;
-            Label l4 = new Label { Text = "연락처:", Location = new Point(0, ly), Size = new Size(80, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _lblCustPhone = new Label { Text = "-", Location = new Point(90, ly), Size = new Size(200, 20), ForeColor = ColorTextMain };
-            pnlCustGrid.Controls.Add(l4); pnlCustGrid.Controls.Add(_lblCustPhone);
-
-            ly += 25;
-            Label l5 = new Label { Text = "주소:", Location = new Point(0, ly), Size = new Size(80, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _lblCustAddress = new Label { Text = "-", Location = new Point(90, ly), Size = new Size(400, 20), ForeColor = ColorTextMain };
-            pnlCustGrid.Controls.Add(l5); pnlCustGrid.Controls.Add(_lblCustAddress);
-
-            ly += 25;
-            Label l6 = new Label { Text = "최초방문:", Location = new Point(0, ly), Size = new Size(80, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
-            _lblCustFirstVisit = new Label { Text = "-", Location = new Point(90, ly), Size = new Size(200, 20), ForeColor = ColorTextMain };
-            pnlCustGrid.Controls.Add(l6); pnlCustGrid.Controls.Add(_lblCustFirstVisit);
-
-            // History Label
-            Label lblHistHeader = new Label { Text = "최근 처방 기록 (최대 10건)", Dock = DockStyle.Top, Height = 25, ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold) };
-
-            // History ListBox
-            _lstRxHistory = new ListBox
-            {
-                Dock = DockStyle.Fill,
-                BackColor = ColorBgMain,
-                ForeColor = ColorTextMain,
-                BorderStyle = BorderStyle.FixedSingle
-            };
-
-            // Add inner controls in reverse Z-order to layout properly without overlaps
-            pnlDetailCard.Controls.Add(_lstRxHistory);
-            pnlDetailCard.Controls.Add(lblHistHeader);
-            pnlDetailCard.Controls.Add(pnlCustGrid);
-            pnlDetailCard.Controls.Add(pnlCustTitle);
-
-            // Add right panel controls in reverse Z-order so they dock top-down correctly
-            pnlRight.Controls.Add(pnlDetailCard);
-            pnlRight.Controls.Add(pnlSpacer2);
-            pnlRight.Controls.Add(pnlSearchCust);
-            pnlRight.Controls.Add(pnlRightHeader);
+            // 2. Step 1 (Search Rx) & Step 2 (Customer details) Controls Initialization
+            InitializeChartWorkspaceControls();
 
             // Initialize 5th Tab (Data Management)
             InitializeDataManagementTab();
@@ -3114,7 +2873,13 @@ namespace MssqlPatientHelper
             _txtSearchChrtNo.Text = chrtno;
             SearchCustomer(chrtno);
 
-            // 3. Show Toast Notice
+            // 3. Troubleshooter 통합 연동: 우측 해결 조절판에도 즉시 로드
+            if (_troubleshooter != null)
+            {
+                _troubleshooter.SetChartNoAndLoad(chrtno);
+            }
+
+            // 4. Show Toast Notice
             ShowToast(string.Format("차트번호 {0} 복사 및 조회 완료!", chrtno), ColorEmerald);
         }
 
@@ -3130,8 +2895,92 @@ namespace MssqlPatientHelper
             SearchCustomer(chrtno);
         }
 
+        private void InitializeChartWorkspaceControls()
+        {
+            _txtSearchName = new TextBox { Size = new Size(130, 25), BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
+            _txtSearchJumin = new TextBox { Size = new Size(140, 25), MaxLength = 8, BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
+            _txtSearchJumin.TextChanged += TxtSearchJumin_TextChanged;
+
+            _btnSearchRx = new Button
+            {
+                Text = "🔍 처방 검색",
+                Size = new Size(110, 32),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = ColorIndigo,
+                ForeColor = Color.White,
+                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
+            };
+            _btnSearchRx.FlatAppearance.BorderSize = 0;
+            _btnSearchRx.Click += BtnSearchRx_Click;
+
+            _dgvResults = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BackgroundColor = ColorBgCard,
+                ForeColor = ColorTextMain,
+                GridColor = ColorBorder,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                ReadOnly = true,
+                BorderStyle = BorderStyle.None,
+                EnableHeadersVisualStyles = false,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                ColumnHeadersHeight = 32
+            };
+            _dgvResults.ColumnHeadersDefaultCellStyle.BackColor = ColorBgMain;
+            _dgvResults.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            _dgvResults.ColumnHeadersDefaultCellStyle.Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold);
+            _dgvResults.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 4, 6, 4);
+            _dgvResults.DefaultCellStyle.BackColor = ColorBgCard;
+            _dgvResults.DefaultCellStyle.ForeColor = ColorTextMain;
+            _dgvResults.DefaultCellStyle.SelectionBackColor = ColorIndigo;
+            _dgvResults.DefaultCellStyle.SelectionForeColor = Color.White;
+            _dgvResults.CellClick += DgvResults_CellClick;
+            _dgvResults.CellFormatting += DgvResults_CellFormatting;
+
+            _txtSearchChrtNo = new TextBox { Size = new Size(130, 25), BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
+            _btnSearchCust = new Button { Text = "고객 조회", Size = new Size(85, 32), FlatStyle = FlatStyle.Flat, BackColor = ColorEmerald, ForeColor = Color.White, Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold) };
+            _btnSearchCust.FlatAppearance.BorderSize = 0;
+            _btnSearchCust.Click += BtnSearchCust_Click;
+
+            _btnRestoreCust = new Button { Text = "고객 복구", Size = new Size(85, 32), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(245, 158, 11), ForeColor = Color.Black, Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold) };
+            _btnRestoreCust.FlatAppearance.BorderSize = 0;
+            _btnRestoreCust.Click += BtnRestoreCust_Click;
+
+            _lblToast = new Label
+            {
+                Size = new Size(180, 28),
+                BackColor = Color.FromArgb(30, 41, 59),
+                ForeColor = ColorEmerald,
+                Font = new Font("맑은 고딕", 9F, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter,
+                BorderStyle = BorderStyle.FixedSingle,
+                Visible = false
+            };
+
+            _lblCustNameTitle = new Label { Text = "선택된 고객 없음", Size = new Size(150, 30), Font = new Font("맑은 고딕", 12F, FontStyle.Bold), ForeColor = Color.White };
+            _lblCustChrtNoBadge = new Label { Text = "-", Size = new Size(120, 22), TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(6, 95, 70), ForeColor = Color.FromArgb(167, 243, 208), Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
+            _lblCustChrtNo = new Label { Text = "-", Size = new Size(200, 20), ForeColor = ColorTextMain };
+            _lblCustName = new Label { Text = "-", Size = new Size(200, 20), ForeColor = ColorTextMain, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
+            _lblCustJumin = new Label { Text = "-", Size = new Size(200, 20), ForeColor = ColorTextMain };
+            _lblCustPhone = new Label { Text = "-", Size = new Size(200, 20), ForeColor = ColorTextMain };
+            _lblCustAddress = new Label { Text = "-", Size = new Size(400, 20), ForeColor = ColorTextMain };
+            _lblCustFirstVisit = new Label { Text = "-", Size = new Size(200, 20), ForeColor = ColorTextMain };
+
+            _lstRxHistory = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ColorBgMain,
+                ForeColor = ColorTextMain,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+        }
+
         // Master Customer Search logic
-        private void SearchCustomer(string chrtno)
+        internal void SearchCustomer(string chrtno)
         {
             if (_chkDemoMode.Checked)
             {
@@ -3439,7 +3288,7 @@ namespace MssqlPatientHelper
         }
 
         // Toast message display
-        private void ShowToast(string message, Color color)
+        internal void ShowToast(string message, Color color)
         {
             _lblToast.Text = message;
             _lblToast.ForeColor = color;
@@ -3478,7 +3327,7 @@ namespace MssqlPatientHelper
             return jumin;
         }
 
-        private void BtnRestoreCust_Click(object sender, EventArgs e)
+        internal void BtnRestoreCust_Click(object sender, EventArgs e)
         {
             string chrtno = _txtSearchChrtNo.Text.Trim();
             if (string.IsNullOrEmpty(chrtno))
@@ -12875,7 +12724,7 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             };
             pnlBottom.Resize += delegate { layoutHistoryButtons(); };
 
-            // 중앙 그리드
+            // 중앙 그리드 (과거 이력 관리)
             _dgvHistoryMaster = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -12890,7 +12739,9 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
                 BorderStyle = BorderStyle.None,
                 EnableHeadersVisualStyles = false,
                 ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.Single,
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal
+                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
+                ColumnHeadersHeight = 32,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing
             };
 
             _dgvHistoryMaster.ColumnHeadersDefaultCellStyle.BackColor = ColorBgMain;
@@ -12900,9 +12751,9 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             _dgvHistoryMaster.DefaultCellStyle.SelectionBackColor = ColorIndigo;
 
             _tabPastHistoryManagement.Controls.Add(_dgvHistoryMaster);
-            _dgvHistoryMaster.SendToBack();
-            pnlTop.BringToFront();
-            pnlBottom.BringToFront();
+            _dgvHistoryMaster.BringToFront();
+            pnlBottom.SendToBack();
+            pnlTop.SendToBack();
             layoutHistoryButtons();
         }
 
@@ -15089,9 +14940,15 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             if (_tpMixed != null) _tpMixed.Text = "⚠️ 처방전 혼선/불일치";
         }
 
+        public void SetChartNoAndLoad(string chrtno)
+        {
+            if (_txtChartNo != null) _txtChartNo.Text = chrtno;
+            LoadChartDetails(chrtno);
+        }
+
         private void InitializeComponent()
         {
-            this.Text = "pm+helper - 차트 혼선 진단 및 처방전 분리 오류 해결 도구";
+            this.Text = "pm+helper - 차트 검증 및 오류 해결 통합 센터";
             this.Size = new Size(1100, 680);
             this.StartPosition = FormStartPosition.CenterParent;
             this.BackColor = ColorBgMain;
@@ -15103,7 +14960,7 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
 
             // Split Container
             SplitContainer split = new SplitContainer();
-            _mainForm._splitChartResolver = split; // 멤버 대입
+            _mainForm._splitChartResolver = split;
             _mainForm._splitChartResolver.Dock = DockStyle.Fill;
             _mainForm._splitChartResolver.Orientation = Orientation.Vertical;
             _mainForm._splitChartResolver.Size = new Size(1050, 600);
@@ -15114,16 +14971,92 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             this.Controls.Add(_mainForm._splitChartResolver);
             _mainForm._splitChartResolver.SplitterMoved += (s, e) => { _mainForm._distChartResolver = _mainForm._splitChartResolver.SplitterDistance; _mainForm.SaveConfig(); };
 
-            // Left Panel (Scanner) -> Panel1에 배치
-            Panel pnlLeft = new Panel { Dock = DockStyle.Fill, BackColor = ColorBgMain, Padding = new Padding(12) };
+            // Left Panel (Scanner & Search Modes)
+            Panel pnlLeft = new Panel { Dock = DockStyle.Fill, BackColor = ColorBgMain, Padding = new Padding(8) };
             _mainForm._splitChartResolver.Panel1.Controls.Add(pnlLeft);
 
+            // 좌측 모드 탭 컨트롤 (개별 처방 검색 vs DB 전수 스캔)
+            TabControl tcLeftModes = new TabControl
+            {
+                Dock = DockStyle.Fill,
+                BackColor = ColorBgMain,
+                ForeColor = ColorTextMain,
+                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
+            };
+
+            // 1. 탭: 개별 처방 검색
+            TabPage tpSearchRx = new TabPage
+            {
+                Text = "🔍 개별 처방 검색",
+                BackColor = ColorBgMain,
+                Padding = new Padding(8)
+            };
+
+            // 2. 탭: DB 전수 스캔
+            TabPage tpScanDb = new TabPage
+            {
+                Text = "🚨 DB 전수 스캔",
+                BackColor = ColorBgMain,
+                Padding = new Padding(8)
+            };
+
+            tcLeftModes.TabPages.Add(tpSearchRx);
+            tcLeftModes.TabPages.Add(tpScanDb);
+            pnlLeft.Controls.Add(tcLeftModes);
+
+            // ----------------------------------------------------
+            // 탭 1 [개별 처방 검색] 내부 구성
+            // ----------------------------------------------------
+            Panel pnlSearchRx = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 85,
+                BackColor = ColorBgCard,
+                Padding = new Padding(10)
+            };
+
+            Label lblSearchName = new Label { Text = "환자 이름", Location = new Point(10, 12), Size = new Size(65, 20), ForeColor = ColorTextSec };
+            _mainForm._txtSearchName.Location = new Point(10, 35);
+            _mainForm._txtSearchName.Size = new Size(125, 25);
+            pnlSearchRx.Controls.Add(lblSearchName);
+            pnlSearchRx.Controls.Add(_mainForm._txtSearchName);
+
+            Label lblSearchJumin = new Label { Text = "주민번호 앞 7자리", Location = new Point(145, 12), Size = new Size(115, 20), ForeColor = ColorTextSec };
+            _mainForm._txtSearchJumin.Location = new Point(145, 35);
+            _mainForm._txtSearchJumin.Size = new Size(135, 25);
+            pnlSearchRx.Controls.Add(lblSearchJumin);
+            pnlSearchRx.Controls.Add(_mainForm._txtSearchJumin);
+
+            _mainForm._btnSearchRx.Location = new Point(290, 30);
+            _mainForm._btnSearchRx.Size = new Size(105, 33);
+            pnlSearchRx.Controls.Add(_mainForm._btnSearchRx);
+
+            Label lblRxHint = new Label
+            {
+                Text = "💡 처방 목록에서 행을 클릭하면 우측에 차트 정보 & 처방 분포가 자동 연동됩니다.",
+                Dock = DockStyle.Top,
+                Height = 26,
+                ForeColor = ColorTextSec,
+                Font = new Font("맑은 고딕", 8.5F, FontStyle.Italic)
+            };
+
+            Panel pnlRxSpacer = new Panel { Dock = DockStyle.Top, Height = 6 };
+
+            tpSearchRx.Controls.Add(_mainForm._dgvResults);
+            tpSearchRx.Controls.Add(pnlRxSpacer);
+            tpSearchRx.Controls.Add(lblRxHint);
+            tpSearchRx.Controls.Add(pnlSearchRx);
+            _mainForm._dgvResults.BringToFront();
+
+            // ----------------------------------------------------
+            // 탭 2 [DB 전수 스캔] 내부 구성
+            // ----------------------------------------------------
             Label lblScannerTitle = new Label
             {
                 Text = "🚨 차트 오류 유형별 전수 검사",
                 Dock = DockStyle.Top,
-                Height = 30,
-                Font = new Font("맑은 고딕", 11F, FontStyle.Bold),
+                Height = 28,
+                Font = new Font("맑은 고딕", 10.5F, FontStyle.Bold),
                 ForeColor = ColorAlarm
             };
 
@@ -15140,9 +15073,8 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             _btnScanMixed.FlatAppearance.BorderSize = 0;
             _btnScanMixed.Click += BtnScanMixed_Click;
 
-            Panel pnlSpacer1 = new Panel { Dock = DockStyle.Top, Height = 10 };
+            Panel pnlSpacerScan = new Panel { Dock = DockStyle.Top, Height = 8 };
 
-            // TabControl for split views
             _tcScanner = new TabControl
             {
                 Dock = DockStyle.Fill,
@@ -15151,40 +15083,31 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
                 Font = new Font("맑은 고딕", 9F, FontStyle.Regular)
             };
 
-            _tpDuplicate = new TabPage
-            {
-                Text = "👤 개명 및 중복 차트",
-                BackColor = ColorBgCard
-            };
-            _tpMixed = new TabPage
-            {
-                Text = "⚠️ 처방전 혼선/불일치",
-                BackColor = ColorBgCard
-            };
+            _tpDuplicate = new TabPage { Text = "👤 개명 및 중복 차트", BackColor = ColorBgCard };
+            _tpMixed = new TabPage { Text = "⚠️ 처방전 혼선/불일치", BackColor = ColorBgCard };
 
             _tcScanner.TabPages.Add(_tpDuplicate);
             _tcScanner.TabPages.Add(_tpMixed);
 
-            // Grids
             _dgvDuplicate = CreateScannerGrid();
             _dgvDuplicate.CellClick += DgvMixed_CellClick;
 
             Panel pnlDupBottom = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 120,
-                Padding = new Padding(0, 5, 0, 5),
+                Height = 115,
+                Padding = new Padding(0, 4, 0, 4),
                 BackColor = ColorBgCard
             };
             Button btnExportExcel = new Button
             {
                 Text = "📊 개명/중복 차트 목록 엑셀(CSV) 내보내기",
                 Dock = DockStyle.Top,
-                Height = 35,
+                Height = 34,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = ColorIndigo,
                 ForeColor = Color.White,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
+                Font = new Font("맑은 고딕", 9F, FontStyle.Bold)
             };
             btnExportExcel.FlatAppearance.BorderSize = 0;
             btnExportExcel.Click += BtnExportExcel_Click;
@@ -15194,11 +15117,11 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             {
                 Text = "🗑️ 처방 없는 중복 차트 일괄 삭제",
                 Dock = DockStyle.Top,
-                Height = 35,
+                Height = 34,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = ColorAlarm,
                 ForeColor = Color.White,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
+                Font = new Font("맑은 고딕", 9F, FontStyle.Bold)
             };
             btnDeleteEmptyDuplicates.FlatAppearance.BorderSize = 0;
             btnDeleteEmptyDuplicates.Click += BtnDeleteEmptyDuplicates_Click;
@@ -15208,11 +15131,11 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             {
                 Text = "🗑️ 이름 없는 유령 환자 차트 일괄 삭제",
                 Dock = DockStyle.Top,
-                Height = 35,
+                Height = 34,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = ColorAlarm,
                 ForeColor = Color.White,
-                Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold)
+                Font = new Font("맑은 고딕", 9F, FontStyle.Bold)
             };
             btnDeleteGhostCharts.FlatAppearance.BorderSize = 0;
             btnDeleteGhostCharts.Click += BtnDeleteGhostCharts_Click;
@@ -15226,62 +15149,138 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             _dgvMixed.CellClick += DgvMixed_CellClick;
             _tpMixed.Controls.Add(_dgvMixed);
 
+            tpScanDb.Controls.Add(_tcScanner);
+            tpScanDb.Controls.Add(pnlSpacerScan);
+            tpScanDb.Controls.Add(_btnScanMixed);
+            tpScanDb.Controls.Add(lblScannerTitle);
 
-            pnlLeft.Controls.Add(_tcScanner);
-            pnlLeft.Controls.Add(pnlSpacer1);
-            pnlLeft.Controls.Add(_btnScanMixed);
-            pnlLeft.Controls.Add(lblScannerTitle);
-
-            // Right Panel (Console) -> Panel2에 배치
+            // ----------------------------------------------------
+            // Right Panel (통합 분석 및 해결 조절판)
+            // ----------------------------------------------------
             Panel pnlRight = new Panel { Dock = DockStyle.Fill, BackColor = ColorBgMain, Padding = new Padding(12), AutoScroll = true };
             _mainForm._splitChartResolver.Panel2.Controls.Add(pnlRight);
 
             Label lblConsoleTitle = new Label
             {
-                Text = "🛠️ 혼선 상세 분석 및 해결 조절판",
-                Location = new Point(15, 12),
-                Size = new Size(350, 25),
+                Text = "🛠️ 차트 상세 검증 및 분리/복구 해결 조절판",
+                Location = new Point(15, 10),
+                Size = new Size(450, 25),
                 Font = new Font("맑은 고딕", 11F, FontStyle.Bold),
                 ForeColor = ColorEmerald
             };
             pnlRight.Controls.Add(lblConsoleTitle);
 
-            // Group: Loaded Chart Info
+            // 1. Group: Loaded Chart Info & Master Verification
             GroupBox gbChartInfo = new GroupBox
             {
-                Text = "선택된 차트 정보 조회",
-                Location = new Point(15, 45),
-                Size = new Size(580, 100),
+                Text = "1. 선택된 차트 마스터 정보 & 검증/복구",
+                Location = new Point(15, 38),
+                Size = new Size(580, 230),
                 ForeColor = ColorTextSec
             };
             pnlRight.Controls.Add(gbChartInfo);
 
-            Label lblC1 = new Label { Text = "차트번호:", Location = new Point(15, 30), Size = new Size(70, 20), ForeColor = ColorTextSec };
-            _txtChartNo = new TextBox { Location = new Point(90, 27), Size = new Size(120, 25), BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
-            Button btnLoadChart = new Button { Text = "상세 조회", Location = new Point(220, 26), Size = new Size(80, 27), FlatStyle = FlatStyle.Flat, BackColor = ColorIndigo, ForeColor = Color.White };
+            Label lblC1 = new Label { Text = "차트번호:", Location = new Point(12, 28), Size = new Size(65, 20), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
+            _txtChartNo = new TextBox { Location = new Point(78, 25), Size = new Size(110, 25), BackColor = ColorBgMain, ForeColor = ColorTextMain, BorderStyle = BorderStyle.FixedSingle };
+            _txtChartNo.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) BtnLoadChart_Click(s, e); };
+
+            Button btnLoadChart = new Button { Text = "🔍 상세 조회", Location = new Point(195, 24), Size = new Size(88, 27), FlatStyle = FlatStyle.Flat, BackColor = ColorIndigo, ForeColor = Color.White, Font = new Font("맑은 고딕", 9F, FontStyle.Bold) };
             btnLoadChart.FlatAppearance.BorderSize = 0;
             btnLoadChart.Click += BtnLoadChart_Click;
+
+            Button btnRestoreCust = new Button
+            {
+                Text = "🩹 고객 복구",
+                Location = new Point(289, 24),
+                Size = new Size(95, 27),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(245, 158, 11), // Amber 500
+                ForeColor = Color.Black,
+                Font = new Font("맑은 고딕", 9F, FontStyle.Bold)
+            };
+            btnRestoreCust.FlatAppearance.BorderSize = 0;
+            btnRestoreCust.Click += (s, e) =>
+            {
+                string chrt = _txtChartNo.Text.Trim();
+                if (string.IsNullOrEmpty(chrt))
+                {
+                    MessageBox.Show("복구할 차트번호를 먼저 입력하거나 조회해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+                _mainForm._txtSearchChrtNo.Text = chrt;
+                _mainForm.BtnRestoreCust_Click(s, e);
+                LoadChartDetails(chrt);
+            };
+
+            _mainForm._lblToast.Location = new Point(390, 24);
+            _mainForm._lblToast.Size = new Size(175, 27);
+
             gbChartInfo.Controls.Add(lblC1);
             gbChartInfo.Controls.Add(_txtChartNo);
             gbChartInfo.Controls.Add(btnLoadChart);
+            gbChartInfo.Controls.Add(btnRestoreCust);
+            gbChartInfo.Controls.Add(_mainForm._lblToast);
 
             _lblCurrentCustInfo = new Label
             {
                 Text = "조회된 차트 정보 없음 (조회해 주세요)",
-                Location = new Point(15, 65),
-                Size = new Size(550, 25),
+                Location = new Point(12, 58),
+                Size = new Size(555, 24),
                 ForeColor = ColorTextMain,
                 Font = new Font("맑은 고딕", 9.5F, FontStyle.Bold),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
             };
             gbChartInfo.Controls.Add(_lblCurrentCustInfo);
 
-            // Group: Prescription Distribution
+            Panel pnlCustDetails = new Panel
+            {
+                Location = new Point(12, 85),
+                Size = new Size(555, 135),
+                BackColor = ColorBgCard,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            int ly = 4;
+            Label l1 = new Label { Text = "등록 이름:", Location = new Point(0, ly), Size = new Size(70, 18), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 8.5F, FontStyle.Bold) };
+            _mainForm._lblCustName.Location = new Point(72, ly);
+            _mainForm._lblCustName.Size = new Size(180, 18);
+            _mainForm._lblCustName.Font = new Font("맑은 고딕", 8.5F, FontStyle.Bold);
+
+            Label l2 = new Label { Text = "주민번호:", Location = new Point(260, ly), Size = new Size(65, 18), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 8.5F, FontStyle.Bold) };
+            _mainForm._lblCustJumin.Location = new Point(330, ly);
+            _mainForm._lblCustJumin.Size = new Size(210, 18);
+            pnlCustDetails.Controls.Add(l1); pnlCustDetails.Controls.Add(_mainForm._lblCustName);
+            pnlCustDetails.Controls.Add(l2); pnlCustDetails.Controls.Add(_mainForm._lblCustJumin);
+
+            ly += 22;
+            Label l3 = new Label { Text = "연락처:", Location = new Point(0, ly), Size = new Size(70, 18), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 8.5F, FontStyle.Bold) };
+            _mainForm._lblCustPhone.Location = new Point(72, ly);
+            _mainForm._lblCustPhone.Size = new Size(180, 18);
+
+            Label l4 = new Label { Text = "최초방문:", Location = new Point(260, ly), Size = new Size(65, 18), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 8.5F, FontStyle.Bold) };
+            _mainForm._lblCustFirstVisit.Location = new Point(330, ly);
+            _mainForm._lblCustFirstVisit.Size = new Size(210, 18);
+            pnlCustDetails.Controls.Add(l3); pnlCustDetails.Controls.Add(_mainForm._lblCustPhone);
+            pnlCustDetails.Controls.Add(l4); pnlCustDetails.Controls.Add(_mainForm._lblCustFirstVisit);
+
+            ly += 22;
+            Label l5 = new Label { Text = "최근 처방 기록 (최대 10건):", Location = new Point(0, ly), Size = new Size(220, 18), ForeColor = ColorTextSec, Font = new Font("맑은 고딕", 8.5F, FontStyle.Bold) };
+            pnlCustDetails.Controls.Add(l5);
+
+            ly += 20;
+            _mainForm._lstRxHistory.Location = new Point(0, ly);
+            _mainForm._lstRxHistory.Size = new Size(555, 60);
+            _mainForm._lstRxHistory.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            pnlCustDetails.Controls.Add(_mainForm._lstRxHistory);
+
+            gbChartInfo.Controls.Add(pnlCustDetails);
+
+            // 2. Group: Prescription Distribution
             GroupBox gbDistribution = new GroupBox
             {
-                Text = "차트 내부 처방전 분포 (혼선 현황)",
-                Location = new Point(15, 155),
-                Size = new Size(580, 150),
+                Text = "2. 차트 내부 처방전 분포 (혼선 현황)",
+                Location = new Point(15, 278),
+                Size = new Size(580, 140),
                 ForeColor = ColorTextSec
             };
             pnlRight.Controls.Add(gbDistribution);
@@ -15309,11 +15308,11 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             _dgvPrescDistribution.DefaultCellStyle.SelectionBackColor = ColorIndigo;
             gbDistribution.Controls.Add(_dgvPrescDistribution);
 
-            // Group: Step 1 (Restore Master)
+            // 3. Group: Step 1 (Restore Master)
             GroupBox gbStep1 = new GroupBox
             {
-                Text = "1단계: 고객 마스터 정보 복구 (이름/주민번호 되돌리기)",
-                Location = new Point(15, 315),
+                Text = "3. 1단계: 고객 마스터 정보 복구 (이름/주민번호 되돌리기)",
+                Location = new Point(15, 428),
                 Size = new Size(580, 95),
                 ForeColor = ColorTextSec
             };
@@ -15349,11 +15348,11 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             };
             gbStep1.Controls.Add(lblStep1Info);
 
-            // Group: Step 2 (Move Prescriptions)
+            // 4. Group: Step 2 (Move Prescriptions)
             GroupBox gbStep2 = new GroupBox
             {
-                Text = "2단계: 처방전 분리 이동 (다른 환자의 처방전을 진짜 차트로 이관)",
-                Location = new Point(15, 420),
+                Text = "4. 2단계: 처방전 분리 이동 (다른 환자의 처방전을 진짜 차트로 이관)",
+                Location = new Point(15, 533),
                 Size = new Size(580, 150),
                 ForeColor = ColorTextSec
             };
@@ -15398,14 +15397,14 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             _btnMoveRx.Click += BtnMoveRx_Click;
             gbStep2.Controls.Add(_btnMoveRx);
 
-            // Special: Quick Solve
+            // 5. Special: Quick Solve
             _btnQuickSolve = new Button
             {
                 Text = "⚡ 천미선 복구 및 박복순 처방 분리 (원클릭 자동 해결 단축키)",
-                Location = new Point(15, 580),
+                Location = new Point(15, 693),
                 Size = new Size(580, 35),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(79, 70, 229), // Indigo 600
+                BackColor = Color.FromArgb(79, 70, 229),
                 ForeColor = Color.White,
                 Font = new Font("맑은 고딕", 10F, FontStyle.Bold),
                 Visible = false
@@ -15414,8 +15413,7 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             _btnQuickSolve.Click += BtnQuickSolve_Click;
             pnlRight.Controls.Add(_btnQuickSolve);
 
-            // Dynamically resize widths of right panel GroupBoxes & QuickSolve button
-            // This prevents AutoScroll conflict with AnchorStyles.Right (WinForms layout bug).
+            // Dynamically resize widths
             pnlRight.Resize += (s, e) =>
             {
                 int padding = 15;
@@ -15729,8 +15727,12 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
             var val = dgv.Rows[e.RowIndex].Cells[0].Value;
             if (val != null)
             {
-                _txtChartNo.Text = val.ToString().Trim();
+                string chrtno = val.ToString().Trim();
+                try { Clipboard.SetText(chrtno); } catch { }
+                _txtChartNo.Text = chrtno;
+                _mainForm._txtSearchChrtNo.Text = chrtno;
                 BtnLoadChart_Click(null, null);
+                _mainForm.ShowToast(string.Format("차트번호 {0} 복사 및 상세 연동 완료!", chrtno), ColorEmerald);
             }
         }
 
@@ -15832,15 +15834,15 @@ WHERE CHRTNO = @sourceChrtNo AND DRUG_SEQ IN ({0});", inClause);
         private void BtnLoadChart_Click(object sender, EventArgs e)
         {
             string chrtno = _txtChartNo.Text.Trim();
+            if (string.IsNullOrEmpty(chrtno))
+            {
+                MessageBox.Show("차트번호를 입력해주세요.", "알림", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            if (_isDemo)
-            {
-                LoadChartDemo(chrtno);
-            }
-            else
-            {
-                LoadChartProduction(chrtno);
-            }
+            _mainForm._txtSearchChrtNo.Text = chrtno;
+            LoadChartDetails(chrtno);
+            _mainForm.SearchCustomer(chrtno);
         }
 
         private void LoadChartDemo(string chrtno)

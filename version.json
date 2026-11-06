@@ -1,8 +1,8 @@
 {
-    "version":  "5.20.0",
+    "version":  "5.21.0",
     "appName":  "pm+helper",
     "repoOwner":  "terapark3-commits",
     "repoName":  "pm-helper",
-    "releaseDate":  "2026-09-05",
-    "releaseNotes":  "1. 메인 탭 개편: 기존 \u0027DB 상세 지도 / 스키마 탐색기\u0027를 단독 \u0027쿼리 실행기\u0027로 전면 개편\n2. 상단 탭 텍스트 및 레이아웃 직관화\n3. 사용자 매뉴얼 및 배포 동기화"
+    "releaseDate":  "2026-11-07",
+    "releaseNotes":  "차트번호 검증 및 조회와 차트 오류 해결 도구 통합 센터 구현"
 }
